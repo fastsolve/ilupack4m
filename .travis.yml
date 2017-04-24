@@ -1,0 +1,13 @@
+sudo: required
+
+before_install:
+  - sudo add-apt-repository ppa:octave/stable
+  - sudo apt-get update
+  - sudo install octave
+
+script:
+  - curl -s  -L https://github.com/numgeom/ilupack4m/archive/master.zip | \
+        bsdtar zxf - --strip-components 1 && \
+    bash download_ilupack.sh && \
+    echo 'addpath $PWD/matlab/ilupack' >> $HOME/.octaverc && \
+    cd makefiles && make TARGET=Octave
