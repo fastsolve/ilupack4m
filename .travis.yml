@@ -4,7 +4,7 @@ env:
   - DEBIAN_FRONTEND=noninteractive
 
 before_install:
-  - sudo add-apt-repository ppa:octave/stable -y
+  - yes '' | sudo add-apt-repository ppa:octave/stable
   - sudo apt-get update -q
   - sudo install -y octave
 
