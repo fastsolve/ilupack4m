@@ -1,17 +1,20 @@
+os: linux
+dist: trusty
 sudo: required
-
 language: C
 
 env:
   - secure: "hgfUoxWDt58kt+Rit+ty4X4uWwpb5T5p/mFGsVeig9sgTtQPuDx+qV+rXb9tLvWmnBRs4PSDPXEhwMaPfxy2MO5eqL8+6GjKdmN7fJ55JZlxRhisw9T146DEFhlhCpzG7167QAz1tkRVYeDwUJGh1HBuoAYbhjO1l6zCw407vsQHOe2iOSOXjjzjuQ1eFtUmdpqp7sdWg0E8iiE8SQdePoohSBjjUMe8RAelHWjBJi3zJlgSBGtMfUdw0EMP3AunkBkWy70x0+JtooUKjPGNdoI67W/DKV3itTxaZ3Wj0SL7KUg3D+oMHP+61HpBUrRuUhObHh1rp5cUSU474d2C3s8bDzykrRijcFUzepk7jhsRyC4B4TewuRsCGspCqsuSZfAn1TadtgWkm/hN2cPAeEBvFYfy1ghEpTylvWbTYxRE1HpXxbClXz5GYhrcqBajZ1Co5fYzSQEMDmRLbdiJavnEw3THbLnRbNrk+ZxHbrIxCxddxEITMhfXgwWh2yI6yCFpn3NoRPKG/CtKPtrJZuCRy9S+qhS/ycOxkPjBtA6pm47/Wvnmxr5X7JVLOIIdpxPa8WVF2FTiP89nN+75LJuYsXrgubnP+2eVi986a3A0K1IcE0a1ePCHcwmCnlc0CXfiUdwPed1jzdkAsUmvTq7C+uVgGnvJaL3Io4Fq+nM="
 
 before_install:
-  - sudo add-apt-repository -y ppa:octave/stable
-  - sudo apt-get update -q
-  - sudo apt-get install -y octave bsdtar liboctave-dev
   - curl -L "$URL" | sudo bsdtar zxf - -C /usr/local/MATLAB --strip-components 3
   - sudo ln -s -f /usr/local/MATLAB/R2016b/bin/matlab /usr/local/bin
   - sudo ln -s -f /usr/local/MATLAB/R2016b/bin/mex /usr/local/bin
+  - sudo add-apt-repository -y ppa:octave/stable
+  - sudo apt-get update -q
+  - sudo apt-get install -y octave bsdtar liboctave-dev
 
 script:
-  - cd makefiles && make TARGET=Octave && make TARGET=MATLAB
+  - cd makefiles
+  - make TARGET=Octave
+  - make TARGET=MATLAB
