@@ -169,3 +169,8 @@ $(MEXDIR)/%.$(EXT): %.c
 
 $(DOBJECTS): ../lib/$(PLATFORM)/libilupack_mumps.a
 $(ZOBJECTS): ../lib/$(PLATFORM)/libilupack_mumps.a
+
+../lib/$(PLATFORM)/libilupack_mumps.a:
+	curl -L http://www.icm.tu-bs.de/~bolle/ilupack/download/ilupack05102016.zip | \
+	        bsdtar zxf - --strip-components 1 -C .. ilupack/lib/GNU64 &&
+	        rm -f ../lib/GNU64/libilupack_mc64.a
