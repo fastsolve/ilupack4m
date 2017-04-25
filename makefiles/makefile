@@ -164,7 +164,7 @@ $(MEXDIR)/%.$(EXT): %.c
 	$< \
 	-L../lib/$(PLATFORM) -lilupack_mumps $(MUMPSDLIB) \
 	-lsparspak -lblaslike -lmetisomp -lmetis -lmetisomp \
-	-lcamd -lamd  -lsuitesparseconfig -lm -lc -lgfortran -lgomp
+	-lcamd -lamd  -lsuitesparseconfig $(LAPACK) -lm -lc -lgfortran -lgomp
 	rm -f $*.o
 
 $(DOBJECTS): ../lib/$(PLATFORM)/libilupack_mumps.a
