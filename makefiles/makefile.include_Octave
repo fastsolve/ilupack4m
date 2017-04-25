@@ -5,6 +5,7 @@ PLATFORM=GNU64
 # Octave mex file extension
 CMEX=mkoctfile --mex
 EXT=mex
+OUTPUT=-o
 
 # -------------------------------
 # C-preprocessor used for FORTRAN source codes

@@ -5,6 +5,7 @@ PLATFORM=GNU64
 # Octave mex file extension
 CMEX=mex
 EXT=mexa64
+OUTPUT=-output
 
 # -------------------------------
 # C-preprocessor used for FORTRAN source codes

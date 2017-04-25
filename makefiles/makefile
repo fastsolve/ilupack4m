@@ -160,7 +160,7 @@ clean:
 
 $(MEXDIR)/%.$(EXT): %.c
 	$(CMEX) -O $(MATCHING) $(FORTRANNAMES) $(LONGINTEGER) -I../include -I../include/$(TARGET) \
-	-o $(MEXDIR)/$*.$(EXT) \
+	$(OUTPUT) $(MEXDIR)/$*.$(EXT) \
 	$< \
 	-L../lib/$(PLATFORM) -lilupack_mumps $(MUMPSDLIB) \
 	-lsparspak -lblaslike -lmetisomp -lmetis -lmetisomp \
