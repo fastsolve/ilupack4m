@@ -5,6 +5,7 @@ PLATFORM=GNU64
 # Octave mex file extension
 CMEX=mkoctfile --mex
 EXT=mex
+OPTS=
 OUTPUT=-o
 
 # -------------------------------

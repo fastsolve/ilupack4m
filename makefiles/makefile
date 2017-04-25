@@ -160,11 +160,11 @@ clean:
 
 $(MEXDIR)/%.$(EXT): %.c
 	$(CMEX) -O $(MATCHING) $(FORTRANNAMES) $(LONGINTEGER) -I../include -I../include/$(TARGET) \
-	$(OUTPUT) $(MEXDIR)/$*.$(EXT) \
+	$(OPTS) $(OUTPUT) $(MEXDIR)/$*.$(EXT) \
 	$< \
 	-L../lib/$(PLATFORM) -lilupack_mumps $(MUMPSDLIB) \
 	-lsparspak -lblaslike -lmetisomp -lmetis -lmetisomp \
-	-lcamd -lamd  -lsuitesparseconfig -lm -lc -lgfortran
+	-lcamd -lamd  -lsuitesparseconfig -lm -lc -lgfortran -lgomp
 	rm -f $*.o
 
 $(DOBJECTS): ../lib/$(PLATFORM)/libilupack_mumps.a
