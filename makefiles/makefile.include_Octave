@@ -5,7 +5,7 @@ PLATFORM=GNU64
 # Octave mex file extension
 CMEX=mkoctfile --mex
 EXT=mex
-OPTS=
+OPTS=-Wl,-rpath,$(STARTDIR)/lib/$(PLATFORM)
 OUTPUT=-o
 LAPACK=
 

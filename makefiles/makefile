@@ -1,5 +1,5 @@
 
-STARTDIR=$(PWD)/..
+STARTDIR:=$(shell realpath ..)
 MYSTARTDIR=$(STARTDIR)
 
 PLATFORM=GNU64
@@ -7,9 +7,7 @@ MYPLATFORM=$(PLATFORM)
 TARGET=Octave
 
 MATCHING=-D_MUMPS_MATCHING_
-MUMPSLIBS=-lmumps
-MUMPSDLIB=-lmumps
-MUMPSSLIB=-lmumps
+MUMPSLIB=-lmumps
 
 include makefile.include_$(TARGET)
 
@@ -150,6 +148,9 @@ ZOBJECTS=$(MEXDIR)/ZSYMilupacksqmr.$(EXT)\
          $(MEXDIR)/ZHERHPDilupackconvert.$(EXT)
 
 OBJECTS=$(DOBJECTS) $(ZOBJECTS)
+ILU_TOPFUNCS=generic_*.o Dpartition_metis_N.o Dperm_matching_null.o \
+     Dqsortpair.o [DZ]readmtc.o [DZ]writemtc.o [DZC]symspd.o [DZ]symiluc.o \
+		 Zsymilucs.o ZsymAMGsolver_real_spd_precs.o
 
 all: $(OBJECTS)
 
@@ -162,15 +163,23 @@ $(MEXDIR)/%.$(EXT): %.c
 	$(CMEX) -O $(MATCHING) $(FORTRANNAMES) $(LONGINTEGER) -I../include -I../include/$(TARGET) \
 	$(OPTS) $(OUTPUT) $(MEXDIR)/$*.$(EXT) \
 	$< \
-	-L../lib/$(PLATFORM) -lilupack_mumps $(MUMPSDLIB) \
-	-lsparspak -lblaslike -lmetisomp -lmetis -lmetisomp \
-	-lcamd -lamd  -lsuitesparseconfig $(LAPACK) -lm -lc -lgfortran -lgomp
+	-L../lib/$(PLATFORM) -lilupack $(LAPACK)
 	rm -f $*.o
 
-$(DOBJECTS): ../lib/$(PLATFORM)/libilupack_mumps.a
-$(ZOBJECTS): ../lib/$(PLATFORM)/libilupack_mumps.a
+$(DOBJECTS): ../lib/$(PLATFORM)/libilupack.so
+$(ZOBJECTS): ../lib/$(PLATFORM)/libilupack.so
+
+../lib/$(PLATFORM)/libilupack.so: ../lib/$(PLATFORM)/libilupack_mumps.a
+	cd ../lib/$(PLATFORM) && ar -x libilupack_mumps.a && \
+	objcopy --localize-symbol=dsymilucupdate_ Dsymiluc.o && \
+	objcopy --localize-symbol=zherilucupdate_ Zsymiluc.o && \
+	objcopy --localize-symbol=zsymilucupdate_ Zsymilucs.o && \
+	gcc -shared -o libilupack.so $(ILU_TOPFUNCS) -L. \
+	-lilupack_mumps -lmumps $(MUMPSLIB) \
+	-lsparspak -lblaslike -lmetisomp -lmetis -lmetisomp \
+	-lcamd -lamd  -lsuitesparseconfig -lm -lc -lgfortran -lgomp && \
+	rm -f *.o *.a
 
 ../lib/$(PLATFORM)/libilupack_mumps.a:
 	curl -L http://www.icm.tu-bs.de/~bolle/ilupack/download/ilupack05102016.zip | \
-	        bsdtar zxf - --strip-components 1 -C .. ilupack/lib/GNU64 && \
-	        rm -f ../lib/GNU64/libilupack_mc64.a
+	        bsdtar zxf - --strip-components 1 -C .. ilupack/lib/GNU64

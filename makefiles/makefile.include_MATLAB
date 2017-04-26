@@ -5,7 +5,7 @@ PLATFORM=GNU64
 # Octave mex file extension
 CMEX=mex
 EXT=mexa64
-OPTS=-compatibleArrayDims
+OPTS=-compatibleArrayDims LDFLAGS="$$LDFLAGS -Wl,-rpath,$(STARTDIR)/lib/$(PLATFORM)"
 OUTPUT=-output
 LAPACK=-lmwlapack -lmwblas
 
