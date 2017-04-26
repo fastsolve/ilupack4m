@@ -26,27 +26,27 @@ function [PREC, options] = ILUfactor(A, options)
 %             PREC(l).U           if present: (block) upper triangular matrix
 %                                 for symmetric matrices, only L is present
 %                                 since and U=L' is not needed.
-%                                 In total we have that L*D^{-1}*U 
-%                                 is the approximate LU decomposition of the 
-%                                 leading block of A after rescaling and 
+%                                 In total we have that L*D^{-1}*U
+%                                 is the approximate LU decomposition of the
+%                                 leading block of A after rescaling and
 %                                 reordering such that D is also the (block)
 %                                 diagonal part of L and U.
 %                                 Note that we formally store PREC(l).D=D^{-1},
-%                                 i.e., we have 
+%                                 i.e., we have
 %                                 L*D^{-1}*U=PREC(l).L*PREC(l).D*PREC(l).U
 %
 %             PREC(l).E           except for l<nlev this refers to the lower
-%                                 left block of A after rescaling and 
+%                                 left block of A after rescaling and
 %                                 reordering and after the approximate LU
 %                                 decomposition has been computed for the
 %                                 leading block
 %             PREC(l).F           except for l<nlev this refers to the upper
-%                                 right block of A after rescaling and 
+%                                 right block of A after rescaling and
 %                                 reordering and after the approximate LU
 %                                 decomposition has been computed for the
 %                                 leading block. Not used in the case
 %                                 of symmetrically structured matrices
-% 
+%
 %             PREC(l).rowscal     row scaling
 %             PREC(l).colscal     column scaling
 %
@@ -56,9 +56,9 @@ function [PREC, options] = ILUfactor(A, options)
 %             PREC(l).param       internal data to communicate with 'ILUsolver',
 %             PREC(l).ptr         'ILUsol' and `ILUdelete'. DO NOT TOUCH!
 %
-%             PREC(l).isreal      flags to indicate which preconditioner has 
+%             PREC(l).isreal      flags to indicate which preconditioner has
 %             PREC(l).isdefinite  been computed, internal data to communicate
-%             PREC(l).issymmetric with 'ILUsolver', `ILUsol' and `ILUdelete'. 
+%             PREC(l).issymmetric with 'ILUsolver', `ILUsol' and `ILUdelete'.
 %             PREC(l).ishermitian DO NOT TOUCH!
 %             PREC(l).A_H         coarse grid system
 %             PREC(l).errorL      error estimate for L
@@ -68,6 +68,10 @@ function [PREC, options] = ILUfactor(A, options)
 %
 % options     updated parameters
 
+if nargin<2
+  options = ILUinit(A)
+end
+
 % make sure that shifted system and A have same type
 if isfield(options,'shiftmatrix')
    shiftreal=1;
@@ -76,7 +80,7 @@ if isfield(options,'shiftmatrix')
 
    if ~isreal(options.shiftmatrix)
       shiftreal=0;
-   end  
+   end
    if isfield(options,'shift0')
       if ~isreal(options.shift0)
 	 shiftreal=0;
@@ -119,7 +123,7 @@ if isfield(options,'shiftmatrix')
    else
       shiftsymmetric=0;
    end
-   
+
    % A and shift do not match
    if isreal(A) & ~shiftreal
       % A becomes complex hermitian
@@ -150,7 +154,7 @@ if isfield(options,'shiftmatrix')
 	 A(1,2)=A(1,2)+norm(A,1)*eps^2*sqrt(-1);
       end
    end
-   
+
 end
 
 if nargin==1
@@ -200,7 +204,7 @@ elseif nargin==2
    if ~isfield(options, 'lfilS')
       options.lfilS=myoptions.lfilS;
    end
-   
+
    if ~isfield(myoptions,'nrestart')
       options.nrestart=myoptions.nrestart;
    end
@@ -265,11 +269,11 @@ elseif nargin==2
 
 else
    error('wrong number of input arguments');
-end % if 
+end % if
 
 if nargout~=2
    error('wrong number of output arguments');
-end % if 
+end % if
 
 myoptions=options;
 
