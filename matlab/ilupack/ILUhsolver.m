@@ -1,39 +1,39 @@
-function [x, options] = AMGtsolver(A, PREC, options, b, x0)
-% [x, options] = AMGtsolver(A, PREC, options, b, x0)
-% [x, options] = AMGtsolver(A, PREC, options, b)
-% [x, options] = AMGtsolver(A, PREC, b, x0)
-% [x, options] = AMGtsolver(A, PREC, b)
+function [x, options] = ILUhsolver(A, PREC, options, b, x0)
+% [x, options] = ILUhsolver(A, PREC, options, b, x0)
+% [x, options] = ILUhsolver(A, PREC, options, b)
+% [x, options] = ILUhsolver(A, PREC, b, x0)
+% [x, options] = ILUhsolver(A, PREC, b)
 %
-% Solves A.'x=b, where A.' is the transposed matrix w.r.t. A.
-% This is done using ILUPACK preconditioner PREC according 
-% to the given options
+% Solves A'x=b, where A' is the (conjugate) transposed matrix
+% w.r.t. A. This is done using ILUPACK preconditioner PREC 
+% according to the given options
 % 
 
 
 if nargin==3
-   % [x, options] = AMGsolver(A, PREC, b)
+   % [x, options] = ILUsolver(A, PREC, b)
    % shift parameter
    b=options;
-   options=AMGinit(A);
+   options=ILUinit(A);
 elseif nargin==4 || nargin==5
    if ~isstruct(options)
-      % [x, options] = AMGsolver(A, PREC, b, x0)
+      % [x, options] = ILUsolver(A, PREC, b, x0)
       % shift parameters
       x0=b;
       b=options;
-      options = AMGinit(A);
+      options = ILUinit(A);
    else
-      % [x, options] = AMGsolver(A, PREC, options, b)
-      % [x, options] = AMGsolver(A, PREC, options, b, x0)
+      % [x, options] = ILUsolver(A, PREC, options, b)
+      % [x, options] = ILUsolver(A, PREC, options, b, x0)
       if isfield(options, 'isdefinite')
 	 myoptions.isdefinite=options.isdefinite;
-	 myoptions = AMGinit(A,myoptions);
+	 myoptions = ILUinit(A,myoptions);
       else
-	 myoptions = AMGinit(A);
+	 myoptions = ILUinit(A);
       end
    
       % complete missing data
-      % [x, options] = AMGsolver(A, PREC, options, b)
+      % [x, options] = ILUsolver(A, PREC, options, b)
       if nargin==4
 	 n=size(b,1);
 	 m=size(b,2);
@@ -283,8 +283,8 @@ elseif ~myoptions.isreal & PREC(1).isreal
       if myoptions.isdefinite & PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=conj(ZHPDDSPDilupacksolver(A,PREC,myoptions,...
-		                                       conj(full(b(:,i))),myx0));
+	     [x(:,i), myoptions]=ZHPDDSPDilupacksolver(A,PREC,myoptions,...
+		                                       full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       
@@ -292,8 +292,8 @@ elseif ~myoptions.isreal & PREC(1).isreal
       elseif ~myoptions.isdefinite & PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=conj(ZHERDSPDilupacksolver(A,PREC,myoptions,...
-		                                       conj(full(b(:,i))),myx0));
+	     [x(:,i), myoptions]=ZHERDSPDilupacksolver(A,PREC,myoptions,...
+		                                       full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       
@@ -301,8 +301,8 @@ elseif ~myoptions.isreal & PREC(1).isreal
       else
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=conj(ZHERDSYMilupacksolver(A,PREC,myoptions,...
-		                                       conj(full(b(:,i))),myx0));
+	     [x(:,i), myoptions]=ZHERDSYMilupacksolver(A,PREC,myoptions,...
+		                                       full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       end % if
@@ -313,8 +313,8 @@ elseif ~myoptions.isreal & PREC(1).isreal
       if PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=ZSYMDSPDilupacksolver(A,PREC,myoptions,...
-		                                       full(b(:,i)),myx0);
+	     [x(:,i), myoptions]=conj(ZSYMDSPDilupacksolver(A,PREC,myoptions,...
+		                                       conj(full(b(:,i))),myx0));
 	     options.niter(i)=myoptions.niter;
 	 end % for i
 
@@ -322,8 +322,8 @@ elseif ~myoptions.isreal & PREC(1).isreal
       else
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=ZSYMDSYMilupacksolver(A,PREC,myoptions,...
-		                                       full(b(:,i)),myx0);
+	     [x(:,i), myoptions]=conj(ZSYMDSYMilupacksolver(A,PREC,myoptions,...
+		                                       conj(full(b(:,i))),myx0));
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       end % if-else
@@ -335,7 +335,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
       if PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=ZGNLDSPDilupacktsolver(A,PREC,myoptions,...
+	     [x(:,i), myoptions]=ZGNLDSPDilupackhsolver(A,PREC,myoptions,...
 		                                       full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
@@ -344,7 +344,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
       else
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=ZGNLDSYMilupacktsolver(A,PREC,myoptions,...
+	     [x(:,i), myoptions]=ZGNLDSYMilupackhsolver(A,PREC,myoptions,...
 		                                       full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
@@ -355,7 +355,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
       % complex symmetric preconditioner -> GMRES
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
-	  [x(:,i), myoptions]=ZGNLDSYMilupacktsolver(A,PREC,myoptions,...
+	  [x(:,i), myoptions]=ZGNLDSYMilupackhsolver(A,PREC,myoptions,...
 	                                            full(b(:,i)),myx0);
 	  options.niter(i)=myoptions.niter;
       end % for i
@@ -364,7 +364,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
    else
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
-	  [x(:,i), myoptions]=ZGNLDGNLilupacktsolver(A,PREC,myoptions,...
+	  [x(:,i), myoptions]=ZGNLDGNLilupackhsolver(A,PREC,myoptions,...
 	                                            full(b(:,i)),myx0);
 	  options.niter(i)=myoptions.niter;
       end % for i
@@ -380,8 +380,8 @@ else
       if myoptions.isdefinite & PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=conj(ZHPDilupacksolver(A,PREC,myoptions,...
-		                                   conj(full(b(:,i))),myx0));
+	     [x(:,i), myoptions]=ZHPDilupacksolver(A,PREC,myoptions,...
+		                                   full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       
@@ -389,8 +389,8 @@ else
       elseif ~myoptions.isdefinite & PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=conj(ZHERHPDilupacksolver(A,PREC,myoptions,...
-		                                      conj(full(b(:,i))),myx0));
+	     [x(:,i), myoptions]=ZHERHPDilupacksolver(A,PREC,myoptions,...
+		                                      full(b(:,i))),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       
@@ -398,8 +398,8 @@ else
       else
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=conj(ZHERilupacksolver(A,PREC,myoptions,...
-		                                   conj(full(b(:,i))),myx0));
+	     [x(:,i), myoptions]=ZHERilupacksolver(A,PREC,myoptions,...
+		                                   full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
       end % if
@@ -411,7 +411,7 @@ else
       if PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=ZGNLHPDilupacktsolver(A,PREC,myoptions,...
+	     [x(:,i), myoptions]=ZGNLHPDilupackhsolver(A,PREC,myoptions,...
 		                                       full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
@@ -420,7 +420,7 @@ else
       else
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
-	     [x(:,i), myoptions]=ZGNLHERilupacktsolver(A,PREC,myoptions,...
+	     [x(:,i), myoptions]=ZGNLHERilupackhsolver(A,PREC,myoptions,...
 		                                      full(b(:,i)),myx0);
 	     options.niter(i)=myoptions.niter;
 	 end % for i
@@ -430,8 +430,8 @@ else
    elseif myoptions.issymmetric & PREC(1).issymmetric
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
-	  [x(:,i), myoptions]=ZSYMilupacksolver(A,PREC,myoptions,...
-	                                        full(b(:,i)),myx0);
+	  [x(:,i), myoptions]=conj(ZSYMilupacksolver(A,PREC,myoptions,...
+	                                        conj(full(b(:,i))),myx0));
 	  options.niter(i)=myoptions.niter;
       end % for i
       
@@ -440,7 +440,7 @@ else
       % complex symmetric preconditioner -> GMRES
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
-	  [x(:,i), myoptions]=ZGNLSYMilupacktsolver(A,PREC,myoptions,...
+	  [x(:,i), myoptions]=ZGNLSYMilupackhsolver(A,PREC,myoptions,...
 	                                           full(b(:,i)),myx0);
 	  options.niter(i)=myoptions.niter;
       end % for i
@@ -449,7 +449,7 @@ else
    else
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
-	  [x(:,i), myoptions]=ZGNLilupacktsolver(A,PREC,myoptions,...
+	  [x(:,i), myoptions]=ZGNLilupackhsolver(A,PREC,myoptions,...
 	                                        full(b(:,i)),myx0);
 	  options.niter(i)=myoptions.niter;
       end % for i

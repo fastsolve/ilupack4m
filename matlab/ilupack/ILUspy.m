@@ -1,9 +1,9 @@
-function AMGspy(A,PREC)
-% AMGspy(PREC)
+function ILUspy(A,PREC)
+% ILUspy(PREC)
 %
 % display multilevel preconditioner PREC
 %
-% AMGspy(A,PREC)
+% ILUspy(A,PREC)
 %
 % display remapped original matrix A associated with the sequence of 
 % reorderings given by PREC
@@ -24,7 +24,7 @@ if nargin==1
       nz=0;
       for i=1:length(PREC.ompparts)
 	  j=I(i);
-	  nz=nz+AMGnnz(PREC.ompparts{j});
+	  nz=nz+ILUnnz(PREC.ompparts{j});
 	  l=length(PREC.ompparts{j});
 	  nlevels=nlevels+l;
 	  % leaf case, extract local permutation
@@ -39,9 +39,9 @@ if nargin==1
 	     n_constraints=PREC.ompparts{j}(1).ispartial;
 	     n_local=length(p)-n_constraints;
 	     if hght(i)==mxhght
-		AMGspypartial(PREC.ompparts{j},p,n_constraints,n,1);
+		ILUspypartial(PREC.ompparts{j},p,n_constraints,n,1);
 	     else
-		AMGspypartial(PREC.ompparts{j},p,n_constraints,n,0);
+		ILUspypartial(PREC.ompparts{j},p,n_constraints,n,0);
 	     end
 	     pause(0.001)
 	  else
@@ -359,7 +359,7 @@ if nargin==1
  
     
     title(['ILUPACK multilevel preconditioner (' num2str(nlev) ' levels)'])
-    xlabel(['nz=' num2str(AMGnnz(PREC))])
+    xlabel(['nz=' num2str(ILUnnz(PREC))])
     hold off;
     
     

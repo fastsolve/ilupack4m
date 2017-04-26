@@ -1,16 +1,16 @@
-function [PREC, options] = AMGfactor(A, options)
-% [PREC, options] = AMGfactor(A, options)
-% [PREC, options] = AMGfactor(A)
+function [PREC, options] = ILUfactor(A, options)
+% [PREC, options] = ILUfactor(A, options)
+% [PREC, options] = ILUfactor(A)
 %
 %
 % Computes ILUPACK preconditioner PREC according to the given options.
-% For details concerning `options' see `AMGinit'
+% For details concerning `options' see `ILUinit'
 %
 % input
 % -----
 % A           nxn nonsingular matrix
 % options     parameters. If `options' is not passed then the default options
-%             from `AMGinit' will be used
+%             from `ILUinit' will be used
 %
 % output
 % ------
@@ -53,12 +53,12 @@ function [PREC, options] = AMGfactor(A, options)
 %             PREC(l).p           permutation for the rows of A
 %             PREC(l).invq        inverse permutation for the columns of A
 %
-%             PREC(l).param       internal data to communicate with 'AMGsolver',
-%             PREC(l).ptr         'AMGsol' and `AMGdelete'. DO NOT TOUCH!
+%             PREC(l).param       internal data to communicate with 'ILUsolver',
+%             PREC(l).ptr         'ILUsol' and `ILUdelete'. DO NOT TOUCH!
 %
 %             PREC(l).isreal      flags to indicate which preconditioner has 
 %             PREC(l).isdefinite  been computed, internal data to communicate
-%             PREC(l).issymmetric with 'AMGsolver', `AMGsol' and `AMGdelete'. 
+%             PREC(l).issymmetric with 'ILUsolver', `ILUsol' and `ILUdelete'. 
 %             PREC(l).ishermitian DO NOT TOUCH!
 %             PREC(l).A_H         coarse grid system
 %             PREC(l).errorL      error estimate for L
@@ -154,22 +154,22 @@ if isfield(options,'shiftmatrix')
 end
 
 if nargin==1
-   options = AMGinit(A);
+   options = ILUinit(A);
 elseif nargin==2
    if isfield(options, 'isdefinite')
       if isfield(options,'ind')
 	 if min(options.ind)<0
-	    myoptions = AMGinit(A);
+	    myoptions = ILUinit(A);
 	 else
 	    myoptions.isdefinite=options.isdefinite;
-	    myoptions = AMGinit(A,myoptions);
+	    myoptions = ILUinit(A,myoptions);
 	 end
       else
 	 myoptions.isdefinite=options.isdefinite;
-	 myoptions = AMGinit(A,myoptions);
+	 myoptions = ILUinit(A,myoptions);
       end
    else
-      myoptions = AMGinit(A);
+      myoptions = ILUinit(A);
    end
 
    % complete missing data

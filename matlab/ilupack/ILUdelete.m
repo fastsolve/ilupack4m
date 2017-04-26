@@ -1,5 +1,5 @@
-function PREC=AMGdelete(PREC)
-% PREC=AMGdelete(PREC)
+function PREC=ILUdelete(PREC)
+% PREC=ILUdelete(PREC)
 % 
 % delete preconditioner, in particular release the associated memory
 

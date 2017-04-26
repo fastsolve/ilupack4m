@@ -1,4 +1,4 @@
-function PREC = AMGconvert(PREC)
+function PREC = ILUconvert(PREC)
 %
 % If the preconditioner is real symmetric and indefinite or complex Hermitian
 % and indefinite, then this routine turns PREC into a positive definite preconditioner

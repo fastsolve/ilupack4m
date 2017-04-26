@@ -1,4 +1,4 @@
-function AMGspypartial(PREC,p,nc,nn,isleaf)
+function ILUspypartial(PREC,p,nc,nn,isleaf)
 % map local preconditioner of size n at global positions defined
 % by the vector p of length n
 

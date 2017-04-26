@@ -1,5 +1,5 @@
-function [L,D,U,P,Q,Dl,Dr]=AMGextractilu(PREC)
-% [L,D,U,P,Q,Dl,Dr]=AMGextractilu(PREC)
+function [L,D,U,P,Q,Dl,Dr]=ILUextractilu(PREC)
+% [L,D,U,P,Q,Dl,Dr]=ILUextractilu(PREC)
 %
 % extract single-level ILU from ILUPACK's multilevel ILU
 % such that L*D*U ~ P^T*Dl*A*Dr*Q, where A refers to the

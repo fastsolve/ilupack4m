@@ -1,5 +1,5 @@
-function nz=AMGnnz(PREC)
-% nz=AMGnnz(PREC)
+function nz=ILUnnz(PREC)
+% nz=ILUnnz(PREC)
 %
 % total number of nonzeros of the multilevel ILU
 % to be consistent with MATLAB, the preconditioner is
@@ -9,7 +9,7 @@ nz=0;
 
 if isfield(PREC,'ompparts')
    for i=1:length(PREC.ompparts)
-       nz=nz+AMGnnz(PREC.ompparts{i});
+       nz=nz+ILUnnz(PREC.ompparts{i});
    end % for i
    return
 end
