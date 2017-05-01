@@ -9,7 +9,7 @@ OPTS=-Wl,-rpath,$(STARTDIR)/lib/$(PLATFORM)
 OUTPUT=-o
 
 ifdef MKL
-      LAPACK = -L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lm
+      LAPACK = -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lm
 else
       LAPACK =
 endif

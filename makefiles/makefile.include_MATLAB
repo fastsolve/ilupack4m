@@ -9,7 +9,7 @@ OPTS=-compatibleArrayDims LDFLAGS="$$LDFLAGS -Wl,-rpath,$(STARTDIR)/lib/$(PLATFO
 OUTPUT=-output
 
 ifdef MKL
-      LAPACK =-L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lm
+      LAPACK =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lm
 else
       LAPACK = -lmwlapack -lmwblas
 endif
