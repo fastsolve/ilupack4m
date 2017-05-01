@@ -1,5 +1,5 @@
-function x = AMGhsol(PREC,b)
-% x = AMGhsol(PREC,b)
+function x = ILUhsol(PREC,b)
+% x = ILUhsol(PREC,b)
 %
 % For general nonsymmetric and non-Hermitian matrices A, this routine
 % solves A'x=b where A' is the conjugate transposed matrix w.r.t. A.

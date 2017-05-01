@@ -1,5 +1,5 @@
-function [L,D,U,P,Q,Dl,Dr]=AMGextractbilu(PREC,threshold,maxsize)
-% [BL,BD,BU,P,Q,Dl,Dr]=AMGextractbilu(PREC,threshold,maxsize)
+function [L,D,U,P,Q,Dl,Dr]=ILUextractbilu(PREC,threshold,maxsize)
+% [BL,BD,BU,P,Q,Dl,Dr]=ILUextractbilu(PREC,threshold,maxsize)
 %
 % extract single-level block ILU from ILUPACK's multilevel ILU
 % such that BL*BD*BU ~ P^T*Dl*A*Dr*Q, where A refers to the

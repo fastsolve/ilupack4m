@@ -1,5 +1,5 @@
-function x = AMGtsol(PREC,b)
-% x = AMGtsol(PREC,b)
+function x = ILUtsol(PREC,b)
+% x = ILUtsol(PREC,b)
 % 
 % For general nonsymmetric and non-Hermitian matrices A, this routine
 % solves A.'x=b, where A.' is the transposed matrix w.r.t. A.

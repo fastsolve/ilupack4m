@@ -1,6 +1,6 @@
-function options = AMGinit(A,options)
-% options = AMGinit(A)
-% options = AMGinit(A,options)
+function options = ILUinit(A,options)
+% options = ILUinit(A)
+% options = ILUinit(A,options)
 % 
 % init structure of options to their default values for a given nxn matrix A
 % 
@@ -132,7 +132,7 @@ function options = AMGinit(A,options)
 %
 % 14. options.amg
 % ---------------
-%     type of AMG preconditioner
+%     type of ILU preconditioner
 %     default:      'ilu'        multilevel ILU
 %     alternatives: 'amli'       multilevel ILU, where on each coarser grid
 %                                an inner iteration is used to solve the

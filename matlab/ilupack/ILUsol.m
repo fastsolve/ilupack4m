@@ -1,10 +1,10 @@
-function x = AMGsol(PREC,b)
-% x = AMGsol(PREC,b)
+function x = ILUsol(PREC,b)
+% x = ILUsol(PREC,b)
 %
 % Solves Ax=b using one step of the computed ILUPACK preconditioner PREC
 % 
 if ~isfield(PREC(1),'param') | ~isfield(PREC(1),'ptr')
-   error('AMGsol cannot be applied');
+   error('ILUsol cannot be applied');
    return
 end % if
 
