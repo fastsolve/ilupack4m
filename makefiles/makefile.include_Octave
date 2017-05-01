@@ -7,7 +7,12 @@ CMEX=mkoctfile --mex
 EXT=mex
 OPTS=
 OUTPUT=-o
-LAPACK=
+
+ifdef MKL
+      LAPACK = -L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lm
+else
+      LAPACK =
+endif
 
 # -------------------------------
 # C-preprocessor used for FORTRAN source codes
@@ -73,14 +78,6 @@ LD=$(FF)
 LDFLAGS=-fopenmp
 
 
-
-# -------------------------------
-# libraries
-# Linux, Linux GNU 64, IBM AIX
-LIBS=-lilupack $(MUMPSLIB) $(PARDISOLIB) -lamd -lcamd -lsuitesparseconfig -lsparspak -lmetisomp -lmetis -lmetisomp -llapack -lblaslike -lblas -lm -lc
-
-# Linux, Linux GNU 64 with Intel MKL
-#LIBS=  -lilupack -lmumps -lamd -lsparspak  -lblaslike -lmetisomp -lmetis -L/opt/intel/mkl/current/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread -lc
 
 
 
