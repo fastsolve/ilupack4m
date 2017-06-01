@@ -27,8 +27,8 @@ before_install:
          sudo apt-get install -y --no-install-recommends  intel-mkl-rt-174 intel-mkl-common-174 intel-mkl-common-c-174 intel-mkl-common-c-64bit-174 intel-tbb-libs-174;
      fi'
   - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-         sudo brew update;
-         sudo brew install --without-java octave;
+         brew update;
+         brew install --without-java octave;
      fi'
 
 script:
