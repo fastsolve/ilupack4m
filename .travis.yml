@@ -6,7 +6,8 @@ matrix:
       dist: trusty
       sudo: required
       env: MKL_VERSION=2017.2.050 MKLROOT=/opt/intel/compilers_and_libraries_2017.2.174/linux/mkl/
-    - os: mac
+    - os: osx
+      osx_image: xcode7.2
 
 before_install:
 # Install Octave and MKL
