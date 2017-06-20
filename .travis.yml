@@ -14,7 +14,7 @@ before_install:
   - sudo ln -s -f /usr/local/MATLAB/R2016b/bin/matlab /usr/local/bin
   - sudo ln -s -f /usr/local/MATLAB/R2016b/bin/mex /usr/local/bin
 # Install MKL
-  - sudo curl -O http://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+  - sudo curl -L -O http://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
   - sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
   - sudo sh -c 'echo deb http://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
   - sudo apt-get update
@@ -27,7 +27,5 @@ before_install:
 
 script:
   - cd makefiles
-  - make TARGET=Octave && make TARGET=Octave clean
-  - make TARGET=MATLAB && make TARGET=MATLAB clean
   - make TARGET=Octave MKL=1 && make TARGET=Octave clean
   - make TARGET=MATLAB MKL=1 && make TARGET=MATLAB clean
