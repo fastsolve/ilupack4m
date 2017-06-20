@@ -17,5 +17,3 @@ script:
   - cd makefiles
   - make TARGET=Octave && make TARGET=Octave clean
   - make TARGET=MATLAB && make TARGET=MATLAB clean
-  - make TARGET=Octave MKL=1 && make TARGET=Octave clean
-  - make TARGET=MATLAB MKL=1 && make TARGET=MATLAB clean
