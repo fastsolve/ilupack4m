@@ -46,8 +46,7 @@ FORTRANNAMES=-D__UNDERSCORE__
 
 
 # decide whether integer should be 32 bit or 64 bit
-# LONGINTEGER=-D_LONG_INTEGER_
-LONGINTEGER=
+LONGINTEGER=-D_LONG_INTEGER_
 
 
 # -------------------------------

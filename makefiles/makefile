@@ -148,7 +148,7 @@ ZOBJECTS=$(MEXDIR)/ZSYMilupacksqmr.$(EXT)\
 OBJECTS=$(DOBJECTS) $(ZOBJECTS)
 ILU_TOPFUNCS=generic_*.o Dpartition_metis_N.o Dperm_matching_null.o \
      Dqsortpair.o [DZ]readmtc.o [DZ]writemtc.o [DZC]symspd.o [DZ]symiluc.o \
-     Zsymilucs.o ZsymAMGsolver_real_spd_precs.o DGNLilupackinit.o
+     Zsymilucs.o ZsymAMGsolver_real_spd_precs.o Dilupackinit.o
 
 all: $(OBJECTS)
 

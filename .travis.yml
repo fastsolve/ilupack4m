@@ -2,7 +2,6 @@ os: linux
 dist: trusty
 sudo: required
 language: C
-env: MKL_VERSION=2017.2.050 MKLROOT=/opt/intel/compilers_and_libraries_2017.2.174/linux/mkl/
 
 before_install:
 # Install Octave
@@ -13,21 +12,8 @@ before_install:
   - curl -L "$URL" | sudo bsdtar zxf - -C /usr/local --strip-components 2
   - sudo ln -s -f /usr/local/MATLAB/R2016b/bin/matlab /usr/local/bin
   - sudo ln -s -f /usr/local/MATLAB/R2016b/bin/mex /usr/local/bin
-# Install MKL
-  - sudo curl -O http://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
-  - sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
-  - sudo sh -c 'echo deb http://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
-  - sudo apt-get update
-  - "sudo apt-get install -y --no-install-recommends
-        intel-mkl-rt-174
-        intel-mkl-common-174
-        intel-mkl-common-c-174
-        intel-mkl-common-c-64bit-174
-        intel-tbb-libs-174"
 
 script:
   - cd makefiles
   - make TARGET=Octave && make TARGET=Octave clean
   - make TARGET=MATLAB && make TARGET=MATLAB clean
-  - make TARGET=Octave MKL=1 && make TARGET=Octave clean
-  - make TARGET=MATLAB MKL=1 && make TARGET=MATLAB clean
