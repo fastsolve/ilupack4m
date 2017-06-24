@@ -69,7 +69,7 @@ function [PREC, options] = ILUfactor(A, options)
 % options     updated parameters
 
 if nargin<2
-  options = ILUinit(A)
+  options = ILUinit(A);
 end
 
 % make sure that shifted system and A have same type

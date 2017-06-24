@@ -2,8 +2,6 @@
 STARTDIR:=$(shell realpath ..)
 MYSTARTDIR=$(STARTDIR)
 
-PLATFORM=GNU64
-MYPLATFORM=$(PLATFORM)
 TARGET=Octave
 
 MATCHING=-D_MUMPS_MATCHING_
@@ -150,7 +148,7 @@ ZOBJECTS=$(MEXDIR)/ZSYMilupacksqmr.$(EXT)\
 OBJECTS=$(DOBJECTS) $(ZOBJECTS)
 ILU_TOPFUNCS=generic_*.o Dpartition_metis_N.o Dperm_matching_null.o \
      Dqsortpair.o [DZ]readmtc.o [DZ]writemtc.o [DZC]symspd.o [DZ]symiluc.o \
-		 Zsymilucs.o ZsymAMGsolver_real_spd_precs.o
+     Zsymilucs.o ZsymAMGsolver_real_spd_precs.o DGNLilupackinit.o
 
 all: $(OBJECTS)
 
@@ -178,8 +176,7 @@ $(ZOBJECTS): ../lib/$(PLATFORM)/libilupack.so
 	-lilupack_mumps -lmumps $(MUMPSLIB) \
 	-lsparspak -lblaslike -lmetisomp -lmetis -lmetisomp \
 	-lcamd -lamd  -lsuitesparseconfig -lm -lc -lgfortran -lgomp && \
-	rm -f *.o *.a
+	rm -f *.o
 
 ../lib/$(PLATFORM)/libilupack_mumps.a:
-	curl -L http://www.icm.tu-bs.de/~bolle/ilupack/download/ilupack05102016.zip | \
-	        bsdtar zxf - --strip-components 1 -C .. ilupack/lib/GNU64
+	gd-get-pub -o - -i 0ByTwsK5_Tl_PN09kZHdNZlRwSkk | bsdtar zxf - --strip-components 1 -C .. ilupack/lib/$(PLATFORM)

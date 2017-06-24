@@ -1,11 +1,11 @@
 # where are the libraries for the Linux platform located
 # note that the platform will be added to this path!
-PLATFORM=GNU64
+PLATFORM=GNU64_long
 
 # Octave mex file extension
 CMEX=mex
 EXT=mexa64
-OPTS=-compatibleArrayDims LDFLAGS="$$LDFLAGS -Wl,-rpath,$(STARTDIR)/lib/$(PLATFORM)"
+OPTS=-largeArrayDims LDFLAGS="$$LDFLAGS -Wl,-rpath,$(STARTDIR)/lib/$(PLATFORM)"
 OUTPUT=-output
 
 ifdef MKL

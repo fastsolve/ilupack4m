@@ -141,13 +141,13 @@ if ~isfield(options,'isdefinite')
 end
    
 % matrix and preconditioner are real
-if myoptions.isreal & PREC(1).isreal
+if myoptions.isreal && PREC(1).isreal
 
    % matrix and preconditioner are symmetric
-   if myoptions.issymmetric & PREC(1).issymmetric
+   if myoptions.issymmetric && PREC(1).issymmetric
 
       % matrix and preconditioner are real SPD -> CG
-      if myoptions.isdefinite & PREC(1).isdefinite
+      if myoptions.isdefinite && PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     if ~isreal(b(:,i))
 		myx0=full(real(x0(:,i)));
@@ -169,7 +169,7 @@ if myoptions.isreal & PREC(1).isreal
       
       % definite preconditioner but not necessarily definite matrix -> MINRES
       % <=> symmetric QMR
-      elseif ~myoptions.isdefinite & PREC(1).isdefinite
+      elseif ~myoptions.isdefinite && PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     if ~isreal(b(:,i))
 		myx0=full(real(x0(:,i)));
@@ -212,7 +212,7 @@ if myoptions.isreal & PREC(1).isreal
       end % if
       
    % matrix is unsymmetric but preconditioner is symmetric
-   elseif ~myoptions.issymmetric & PREC(1).issymmetric
+   elseif ~myoptions.issymmetric && PREC(1).issymmetric
 
       % preconditioner is SPD -> GMRES
       if PREC(1).isdefinite
@@ -277,16 +277,16 @@ if myoptions.isreal & PREC(1).isreal
 	     options.niter(i)=myoptions.niter;
 	  end % if-else
       end %  ifor
-   end % if-elseif-else myoptions.issymmetric & PREC(1).issymmetric
+   end % if-elseif-else myoptions.issymmetric && PREC(1).issymmetric
 
 % complex matrix but real preconditioner
-elseif ~myoptions.isreal & PREC(1).isreal
+elseif ~myoptions.isreal && PREC(1).isreal
 
    % matrix and preconditioner are Hermitian
-   if myoptions.ishermitian & (PREC(1).ishermitian|PREC(1).issymmetric)
+   if myoptions.ishermitian && (PREC(1).ishermitian|PREC(1).issymmetric)
 
       % matrix and preconditioner are HPD -> CG
-      if myoptions.isdefinite & PREC(1).isdefinite
+      if myoptions.isdefinite && PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
 	     [x(:,i), myoptions]=ZHPDDSPDilupacksolver(A,PREC,myoptions,...
@@ -295,7 +295,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
 	 end % for i
       
       % definite preconditioner but not necessarily definite matrix -> MINRES
-      elseif ~myoptions.isdefinite & PREC(1).isdefinite
+      elseif ~myoptions.isdefinite && PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
 	     [x(:,i), myoptions]=ZHERDSPDilupacksolver(A,PREC,myoptions,...
@@ -314,7 +314,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
       end % if
       
    % matrix is complex symmetric and preconditioner is real symmetric
-   elseif myoptions.issymmetric & (PREC(1).issymmetric|PREC(1).ishermitian)
+   elseif myoptions.issymmetric && (PREC(1).issymmetric|PREC(1).ishermitian)
       % preconditioner is real SPD -> SQMR
       if PREC(1).isdefinite
 	 for i=1:size(b,2)
@@ -335,7 +335,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
       end % if-else
       
    % matrix is non-Hermitian,non-symmetric but preconditioner is real symmetric
-   elseif ~myoptions.ishermitian & (PREC(1).ishermitian|PREC(1).issymmetric)
+   elseif ~myoptions.ishermitian && (PREC(1).ishermitian|PREC(1).issymmetric)
 
       % preconditioner is real SPD -> GMRES
       if PREC(1).isdefinite
@@ -357,7 +357,7 @@ elseif ~myoptions.isreal & PREC(1).isreal
       end % if
 
    % matrix is non-complex symmetric but preconditioner is real symmetric
-   elseif ~myoptions.issymmetric & (PREC(1).issymmetric|PREC(1).ishermitian)
+   elseif ~myoptions.issymmetric && (PREC(1).issymmetric|PREC(1).ishermitian)
       % complex symmetric preconditioner -> GMRES
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
@@ -374,16 +374,16 @@ elseif ~myoptions.isreal & PREC(1).isreal
 	                                            full(b(:,i)),myx0);
 	  options.niter(i)=myoptions.niter;
       end % for i
-   end % if-elseif-else myoptions.ishermitian & (PREC(1).ishermitian|PREC(1).issymmetric)
+   end % if-elseif-else myoptions.ishermitian && (PREC(1).ishermitian|PREC(1).issymmetric)
    
 % complex preconditioner, treat matrix also as complex
 else
    
    % matrix and preconditioner are Hermitian
-   if myoptions.ishermitian & PREC(1).ishermitian
+   if myoptions.ishermitian && PREC(1).ishermitian
 
       % matrix and preconditioner are HPD -> CG
-      if myoptions.isdefinite & PREC(1).isdefinite
+      if myoptions.isdefinite && PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
 	     [x(:,i), myoptions]=ZHPDilupacksolver(A,PREC,myoptions,...
@@ -392,7 +392,7 @@ else
 	 end % for i
       
       % definite preconditioner but not necessarily definite matrix -> MINRES
-      elseif ~myoptions.isdefinite & PREC(1).isdefinite
+      elseif ~myoptions.isdefinite && PREC(1).isdefinite
 	 for i=1:size(b,2)
 	     myx0=full(x0(:,i));
 	     [x(:,i), myoptions]=ZHERHPDilupacksolver(A,PREC,myoptions,...
@@ -411,7 +411,7 @@ else
       end % if
       
    % matrix is non-Hermitian but preconditioner is Hermitian
-   elseif ~myoptions.ishermitian & PREC(1).ishermitian
+   elseif ~myoptions.ishermitian && PREC(1).ishermitian
 
       % preconditioner is HPD -> GMRES
       if PREC(1).isdefinite
@@ -433,7 +433,7 @@ else
       end % if
 
    % matrix and preconditioner are complex symmetric
-   elseif myoptions.issymmetric & PREC(1).issymmetric
+   elseif myoptions.issymmetric && PREC(1).issymmetric
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
 	  [x(:,i), myoptions]=ZSYMilupacksolver(A,PREC,myoptions,...
@@ -442,7 +442,7 @@ else
       end % for i
       
    % matrix is non-complex symmetric but preconditioner is complex symmetric
-   elseif ~myoptions.issymmetric & PREC(1).issymmetric
+   elseif ~myoptions.issymmetric && PREC(1).issymmetric
       % complex symmetric preconditioner -> GMRES
       for i=1:size(b,2)
 	  myx0=full(x0(:,i));
@@ -459,7 +459,7 @@ else
 	                                        full(b(:,i)),myx0);
 	  options.niter(i)=myoptions.niter;
       end % for i
-   end % if-elseif-else myoptions.ishermitian & PREC(1).ishermitian
+   end % if-elseif-else myoptions.ishermitian && PREC(1).ishermitian
 end % if
 
 
