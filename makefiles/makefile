@@ -179,4 +179,4 @@ $(ZOBJECTS): ../lib/$(PLATFORM)/libilupack.so
 	rm -f *.o
 
 ../lib/$(PLATFORM)/libilupack_mumps.a:
-	gd-get-pub -o - -i 0ByTwsK5_Tl_PN09kZHdNZlRwSkk | bsdtar zxf - --strip-components 1 -C .. ilupack/lib/$(PLATFORM)
+	curl -s -L https://raw.githubusercontent.com/hpdata/gdutil/master/gd_get_pub.py | python - -o - -i 0ByTwsK5_Tl_PN09kZHdNZlRwSkk | bsdtar zxf - --strip-components 1 -C .. ilupack/lib/$(PLATFORM)
