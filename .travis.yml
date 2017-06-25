@@ -9,14 +9,16 @@ before_install:
   - sudo apt-get update -q
   - sudo apt-get install -y octave liboctave-dev bsdtar realpath
   - pip install requests progressbar2
+# Install gdutil
+  - sudo git clone --depth 1 https://github.com/hpdata/gdutil /usr/local/gdutil
+  - sudo pip install -r /usr/local/gdutil/requirements.txt
+  - sudo ln -s -f /usr/local/gdutil/bin/* /usr/local/bin
+  - echo $CRED > .mycred.txt
+
 # Install MEX
-  - curl -s -L
-    https://raw.githubusercontent.com/hpdata/gdutil/master/gd_get_pub.py |
-    python - -o - -i "$MEX_LINUX" |
-    sudo bsdtar zxf - -C /usr/local --strip-components 2
+  - gd-get-pub -o - -i "$MEX_LINUX" | sudo bsdtar zxf - -C /usr/local --strip-components 2
   - sudo ln -s -f /usr/local/MATLAB/R*/bin/mex /usr/local/bin
 
 script:
-  - cd makefiles
-  - octave --eval "build_milu"
+  - octave --eval "build_milu; run tests/test_aes_fem.m"
   - octave --eval "build_milu -matlab"
