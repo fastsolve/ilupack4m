@@ -15,7 +15,7 @@ addpath([miluroot '/matlab/ilupack']);
 addpath([miluroot '/util']);
 
 % Show help message
-if ~exist(['ILUfactor.' mexext], 'file')
+if ~exist(['DGNLilupackinit.' mexext], 'file')
     disp('Please run build_milu to build ILUPACK.');
 end
 
