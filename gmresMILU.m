@@ -88,6 +88,10 @@ tic;
 [PREC,options] = ILUfactor(A, options);
 times(1) = toc;
 
+if nargout<3
+    fprintf(1, 'Finished setup in %.1f seconds \n', times(1));
+end
+
 tic;
 if isempty(x0)
     [x, options] = ILUsolver(A, PREC, options, b);
@@ -97,6 +101,10 @@ end
 times(2) = toc;
 
 PREC = ILUdelete(PREC); %#ok<NASGU>
+
+if nargout<3
+    fprintf(1, 'Finished solving in %.1f seconds \n', times(2));
+end
 
 end
 
