@@ -12,12 +12,13 @@ for i=1:length(files)
         s = load(fname);
 
         fprintf(1, 'Solving %s\n', fname);
-        A = crs_2sparse(s.aes_fe3_linsys.row_ptr, ...
-            s.aes_fe3_linsys.col_ind, s.aes_fe3_linsys.val);
+        A = crs_matrix({s.aes_fe3_linsys.row_ptr, ...
+            s.aes_fe3_linsys.col_ind, s.aes_fe3_linsys.val});
+
         b = s.aes_fe3_linsys.b;
         x = gmresMILU(A, b, [], rtol);
         fprintf(1, 'Relative residual is %1.g, with tolerance %1.g\n', ...
-            norm(A * x - b) / norm(b), rtol);
+            norm(crs_prodAx(A, x) - b) / norm(b), rtol);
     end
 end
 

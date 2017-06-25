@@ -2,9 +2,9 @@ function [x, options, times] = gmresMILU(varargin)
 % Solves a sparse system using GMRES with Multilevel ILU as right preconditioner
 %
 % Syntax:
-%    x = gmresMILU(A, b) solves a sparse linear system for a matrix in
-%    MATLAB's built-in sparse format using ILUPACK's multilevel ILU as 
-%    the right preconditioner.
+%    x = gmresMILU(A, b) solves a sparse linear system using ILUPACK's multilevel
+%    ILU as the right preconditioner. Matrix A can be in MATLAB's built-in sparse
+%    sparse format or in CRS format created using the function crs_matrix.
 %
 %    x = gmresMILU(rowptr, colind, vals, b) takes a matrix in the CRS
 %    format instead of MATLAB's built-in sparse format.
@@ -15,14 +15,14 @@ function [x, options, times] = gmresMILU(varargin)
 %    value is 30. You can preserve the default value by passing [].
 %
 %    x = gmresMILU(A, b, restart, rtol, maxiter)
-%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxiter) 
-%    allows you to specify the relative tolerance and the maximum number 
-%    of iterations. Their default values are 1.e-5 and 10000, respectively. 
+%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxiter)
+%    allows you to specify the relative tolerance and the maximum number
+%    of iterations. Their default values are 1.e-5 and 10000, respectively.
 %    Use 0 or [] to preserve default values of rtol and maxiter.
 %
 %    x = gmresMILU(A, b, restart, rtol, maxiter, x0)
-%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxiter, x0) 
-%    takes an initial solution in x0. Use 0 or [] to preserve the default 
+%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxiter, x0)
+%    takes an initial solution in x0. Use 0 or [] to preserve the default
 %    initial solution (all zeros).
 %
 %    x = gmresMILU(A, b, restart, rtol, maxit, x0, opts)
@@ -36,6 +36,9 @@ end
 
 if issparse(varargin{1})
     A = varargin{1};
+    next_index = 2;
+elseif isstruct(varargin{1})
+    A = crs_2sparse(varargin{1}.row_ptr, varargin{1}.col_ind, varargin{1}.val);
     next_index = 2;
 else
     A = crs_2sparse(varargin{1}, varargin{2}, varargin{3});
