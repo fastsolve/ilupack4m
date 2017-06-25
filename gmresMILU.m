@@ -2,9 +2,9 @@ function [x, options, times] = gmresMILU(varargin)
 % Solves a sparse system using GMRES with Multilevel ILU as right preconditioner
 %
 % Syntax:
-%    x = gmresMILU(A, b) solves a sparse linear system using ILUPACK's multilevel
-%    ILU as the right preconditioner. Matrix A can be in MATLAB's built-in sparse
-%    sparse format or in CRS format created using the function crs_matrix.
+%    x = gmresMILU(A, b) solves a sparse linear system using ILUPACK's
+%    multilevel ILU as the right preconditioner. Matrix A can be in MATLAB's
+%    built-in sparse format or in CRS format created using crs_matrix.
 %
 %    x = gmresMILU(rowptr, colind, vals, b) takes a matrix in the CRS
 %    format instead of MATLAB's built-in sparse format.
