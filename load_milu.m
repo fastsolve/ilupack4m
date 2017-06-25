@@ -12,5 +12,6 @@ end
 % Load the Petsc4m module
 addpath(miluroot); %#ok<*MCAP>
 addpath([miluroot '/matlab/ilupack']);
+addpath([miluroot '/util']);
 
 end

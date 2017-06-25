@@ -18,5 +18,5 @@ before_install:
 
 script:
   - cd makefiles
-  - make TARGET=Octave && make TARGET=Octave clean
-  - make TARGET=MATLAB && make TARGET=MATLAB clean
+  - octave --eval "build_milu"
+  - octave --eval "build_milu -matlab"
