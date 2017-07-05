@@ -1,5 +1,14 @@
 function load_milu(varargin)
 
+persistent loaded;
+
+% Load only once
+if ~isempty(loaded)
+  return
+else
+  loaded = true;
+end
+
 % ilupack4m depends on paracoder for testing. Load it first
 if ~exist('load_m2c.m', 'file')
     if exist('../paracoder/load_m2c.m', 'file')
