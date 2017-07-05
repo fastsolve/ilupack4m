@@ -11,8 +11,8 @@ end
 
 % ilupack4m depends on paracoder for testing. Load it first
 if ~exist('load_m2c.m', 'file')
-    if exist('../paracoder/load_m2c.m', 'file')
-        run('../paracoder/load_m2c.m')
+    if exist('../paracoder/startup.m', 'file')
+        run('../paracoder/startup.m')
     end
 elseif ~exist('m2c.m', 'file')
     load_m2c
