@@ -96,8 +96,10 @@ tic;
 times(2) = toc;
 
 if nargout < 5
-    fprintf(1, 'Finished solve in %.1f seconds \n', times(2));
+    fprintf(1, 'Finished solve in %d iterations and %.1f seconds \n', iter, times(2));
 end
+
+prec = ILUdelete(prec); %#ok<NASGU>
 
 end
 

@@ -80,7 +80,8 @@ for it_outer = 1:max_outer_iters
         v(j) = v(j) + 1;
         %  v = P1*P2*...Pjm1*(Pj*ej)
         for i = (j - 1): - 1:1
-            v = v - 2 * V(:,i) * (V(:,i)' * v);
+            % v(i:end) = v(i:end) - 2 * (V(i:end,i)' * v(i:end)) * V(i:end,i);
+            v = v - 2 * (V(:,i)' * v) * V(:,i);
         end
         %  Explicitly normalize v to reduce the effects of round-off.
         v = v / vec_norm2(v);
@@ -96,7 +97,8 @@ for it_outer = 1:max_outer_iters
         % Orthogonalize the Krylov vector
         %  Form Pj*Pj-1*...P1*Av.
         for i = 1:j
-            w = w - 2 * V(:,i) * (V(:,i)' * w);
+            % w(i:end) = w(i:end) - 2 * (V(i:end,i)' * w(i:end)) * V(i:end,i);
+            w = w - 2 * (V(:,i)' * w) * V(:,i);
         end
 
         % Update the rotators
