@@ -56,25 +56,25 @@ end
 if nargin >= next_index + 1 && ~isempty(varargin{next_index+1})
     options.nrestart = cast(varargin{next_index+1}, class(options.nrestart));
 else
-    options.nrestart = 30;
+    options.nrestart = cast(30, class(options.nrestart));
 end
 
 if nargin >= next_index + 2 && ~isempty(varargin{next_index+2})
     options.restol = cast(varargin{next_index+2}, class(options.restol));
 else
-    options.restol = 1.e-5;
+    options.restol = cast(1.e-5, class(options.restol));
 end
 
 if nargin >= next_index + 3 && ~isempty(varargin{next_index+3})
     options.maxit = cast(varargin{next_index+3}, class(options.maxit));
 else
-    options.maxit = 10000;
+    options.maxit = cast(10000, class(options.maxit));
 end
 
 if nargin >= next_index + 4 && ~isempty(varargin{next_index+4})
     x0 = varargin{next_index+4};
 else
-    x0 = [];
+    x0 = cast([], class(b));
 end
 
 if nargin >= next_index + 5 && ~isempty(varargin{next_index+5})
@@ -87,9 +87,7 @@ end
 
 % Perform ILU factorization
 times = zeros(2, 1);
-tic;
-[PREC, options] = ILUfactor(A, options);
-times(1) = toc;
+[PREC, options, times(1)] = MILUinit(A, options);
 
 if nargout < 3
     fprintf(1, 'Finished setup in %.1f seconds \n', times(1));
