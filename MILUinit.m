@@ -1,4 +1,4 @@
-function [prec, options, elapsed] = MILUinit(varargin)
+function [prec, options] = MILUinit(varargin)
 %Initialize a multilevel-ILU preconditioner
 %
 %    prec = MILUinit(A) performs ILU factorization and returns an opaque
@@ -13,8 +13,8 @@ function [prec, options, elapsed] = MILUinit(varargin)
 %    allows you to specify additional options for ILUPACK. see ILUinit
 %    for additional options.
 %
-%    [prec, options, elapsed] = MILUinit(...) returns an options structure
-%    and the elapsed wall-clock time in addition to the preconditioner.
+%    [prec, options] = MILUinit(...) returns an options structure in
+%    addition to the preconditioner.
 
 if nargin == 0
     help MILUinit
@@ -43,8 +43,6 @@ if nargin >= next_index && ~isempty(varargin{next_index})
 end
 
 % Perform ILU factorization
-tic;
 [prec, options] = ILUfactor(A, options);
-elapsed = toc;
 
 end

@@ -1,4 +1,4 @@
-function [x, iter, resids, times] = fgmresMILU(varargin)
+function [x, flag, iter, resids, times] = fgmresMILU(varargin)
 % fgmresMILU Solves a sparse system using FGMRES with MILU as preconditioner
 %
 % Syntax:
@@ -29,8 +29,8 @@ function [x, iter, resids, times] = fgmresMILU(varargin)
 %    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol, maxit, x0, opts)
 %    allows you to specify additional options for ILUPACK.
 %
-%    [x, iter, resids, times] = fgmresMILU(...) returns the iteration count
-%      and the history of relative residuals, and runtimes in addition to x
+%    [x, flag, iter, resids, times] = fgmresMILU(...) returns the iteration 
+%      counta, nd the history of relative residuals, and runtimes
 % 
 % Note: The algorithm uses Householder reflectors for orthogonalization. 
 % It is more expensive than modified Gram-Schmidtz but is more robust.
@@ -59,27 +59,30 @@ end
 
 % Perform ILU factorization
 times = zeros(2, 1);
-[prec, options, times(1)] = MILUinit(varargin{1:next_index-1}, varargin{next_index+1:end});
-if nargout < 3
+tic;
+prec = MILUinit(varargin{1:next_index-1}, varargin{next_index+1:end});
+times(1) = toc;
+
+if nargout < 5
     fprintf(1, 'Finished setup in %.1f seconds \n', times(1));
 end
 
 if nargin >= next_index + 1 && ~isempty(varargin{next_index+1})
-    options.nrestart = cast(varargin{next_index+1}, class(options.nrestart));
+    restart = int32(varargin{next_index+1});
 else
-    options.nrestart = cast(30, class(options.nrestart));
+    restart = int32(30);
 end
 
 if nargin >= next_index + 2 && ~isempty(varargin{next_index+2})
-    options.restol = cast(varargin{next_index+2}, class(options.restol));
+    rtol = double(varargin{next_index+2});
 else
-    options.restol = cast(1.e-5, class(options.restol));
+    rtol = 1.e-5;
 end
 
 if nargin >= next_index + 3 && ~isempty(varargin{next_index+3})
-    options.maxit = cast(varargin{next_index+3}, class(options.maxit));
+    maxit = int32(varargin{next_index+3});
 else
-    options.maxit = cast(10000, class(options.maxit));
+    maxit = int32(10000);
 end
 
 if nargin >= next_index + 4 && ~isempty(varargin{next_index+4})
@@ -89,7 +92,26 @@ else
 end
 
 tic;
-[x, iter, resids] = fgmresMILU_kernel(A, b, prec, x0, options);
+[x, flag, iter, resids] = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0);
 times(2) = toc;
+
+if nargout < 5
+    fprintf(1, 'Finished solve in %.1f seconds \n', times(2));
+end
+
+end
+
+function test %#ok<DEFNU>
+%!test
+%!shared A, b, rtol
+%! system('gd-get -O -p 0ByTwsK5_Tl_PemN0QVlYem11Y00 fem2d"*".mat');
+%! s = load('fem2d_cd.mat');
+%! A = s.A;
+%! s = load('fem2d_vec_cd.mat');
+%! b = s.b;
+%! rtol = 1.e-5;
+%
+%! [x, flag, iter, resids] = fgmresMILU(A, b, [], rtol);
+%! assert(norm(b - A*x) < rtol * norm(b))
 
 end
