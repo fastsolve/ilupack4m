@@ -29,7 +29,7 @@ function [x, options, times] = gmresMILU(varargin)
 %    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxit, x0, opts)
 %    allows you to specify additional options for ILUPACK.
 
-if nargin==0
+if nargin == 0
     help gmresMILU
     return;
 end
@@ -47,51 +47,51 @@ end
 
 options = ILUinit(A);
 
-if nargin<next_index
+if nargin < next_index
     error('The right hand-side must be specified');
 else
     b = varargin{next_index};
 end
 
-if nargin >= next_index + 1 && ~isempty(varargin{next_index + 1})
-    options.nrestart = int32(varargin{next_index + 1});
+if nargin >= next_index + 1 && ~isempty(varargin{next_index+1})
+    options.nrestart = cast(varargin{next_index+1}, class(options.nrestart));
 else
     options.nrestart = 30;
 end
 
-if nargin >= next_index + 2 && ~isempty(varargin{next_index + 2})
-    options.restol = double(varargin{next_index + 2});
+if nargin >= next_index + 2 && ~isempty(varargin{next_index+2})
+    options.restol = cast(varargin{next_index+2}, class(options.restol));
 else
     options.restol = 1.e-5;
 end
 
-if nargin >= next_index + 3 && ~isempty(varargin{next_index + 3})
-    options.maxit = int32(varargin{next_index + 3});
+if nargin >= next_index + 3 && ~isempty(varargin{next_index+3})
+    options.maxit = cast(varargin{next_index+3}, class(options.maxit));
 else
     options.maxit = 10000;
 end
 
-if nargin >= next_index + 4 && ~isempty(varargin{next_index + 4})
-    x0 = varargin{next_index + 4};
+if nargin >= next_index + 4 && ~isempty(varargin{next_index+4})
+    x0 = varargin{next_index+4};
 else
     x0 = [];
 end
 
-if nargin >= next_index + 5 && ~isempty(varargin{next_index + 5})
-    opts = varargin{next_index + 5};
+if nargin >= next_index + 5 && ~isempty(varargin{next_index+5})
+    opts = varargin{next_index+5};
     names = fieldnames(opts);
     for i = 1:length(names)
-        options.(names(i)) = opts.(names(i));
+        options.(names(i)) = cast(opts.(names(i)), class(options.(names(i))));
     end
 end
 
 % Perform ILU factorization
-times = zeros(2,1);
+times = zeros(2, 1);
 tic;
-[PREC,options] = ILUfactor(A, options);
+[PREC, options] = ILUfactor(A, options);
 times(1) = toc;
 
-if nargout<3
+if nargout < 3
     fprintf(1, 'Finished setup in %.1f seconds \n', times(1));
 end
 
@@ -105,7 +105,7 @@ times(2) = toc;
 
 PREC = ILUdelete(PREC); %#ok<NASGU>
 
-if nargout<3
+if nargout < 3
     fprintf(1, 'Finished solving in %.1f seconds \n', times(2));
 end
 
@@ -113,15 +113,19 @@ end
 
 function test %#ok<DEFNU>
 %!test
-%!shared A, b
+%!shared A, b, rtol
 %! system('gd-get -O -p 0ByTwsK5_Tl_PemN0QVlYem11Y00 fem2d"*".mat');
 %! s = load('fem2d_cd.mat');
 %! A = s.A;
 %! s = load('fem2d_vec_cd.mat');
 %! b = s.b;
 %! rtol = 1.e-5;
-
+%
 %! [x, options, times] = gmresMILU(A, b, [], rtol);
+%! assert(norm(b - A*x) < 1.e2 * rtol * norm(b))
+
+%!test
+%! [x, options, times] = gmresMILU(A, b, 30, rtol);
 %! assert(norm(b - A*x) < 1.e2 * rtol * norm(b))
 
 end
