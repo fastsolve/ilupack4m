@@ -149,6 +149,6 @@ function test %#ok<DEFNU>
 %! rtol = 1.e-5;
 %
 %! [x, flag, iter, resids] = fgmresMILU(A, b, [], rtol, 100);
-%! assert(norm(b - A*x) < rtol * norm(b))
+%! assert(norm(b - A*x) <= rtol * norm(b))
 
 end
