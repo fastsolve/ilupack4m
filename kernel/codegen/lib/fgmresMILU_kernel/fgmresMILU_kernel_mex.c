@@ -1,5 +1,5 @@
 /*
- * codegen/lib/fgmresMILU_kernel/fgmresMILU_kernel_mex.c
+ * fgmresMILU_kernel_mex.c
  *
  * Auxiliary code for mexFunction of fgmresMILU_kernel
  *

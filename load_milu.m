@@ -20,6 +20,7 @@ end
 
 % Load ILUPACK
 addpath(miluroot); %#ok<*MCAP>
+addpath([miluroot '/kernel']);
 addpath([miluroot '/matlab/ilupack']);
 addpath([miluroot '/util']);
 
