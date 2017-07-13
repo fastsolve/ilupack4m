@@ -4,14 +4,17 @@
 #include "ilupack.h"
 
 static void b_m2c_error(const emxArray_char_T *varargin_3);
+static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend);
+static void c_m2c_error(void);
 static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
   *A_col_ind, const emxArray_real_T *A_val, int A_nrows, const emxArray_real_T
-  *x, emxArray_real_T *b);
+  *x, emxArray_real_T *b, int nthreads);
 static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
   emxArray_int32_T *col_ind, const emxArray_real_T *val, const emxArray_real_T
   *x, int x_m, emxArray_real_T *b, int b_m, int nrows, int nrhs, boolean_T ismt);
 static void m2c_error(const emxArray_char_T *varargin_3);
 static void m2c_printf(int varargin_2, double varargin_3);
+static void m2c_warn(void);
 static void b_m2c_error(const emxArray_char_T *varargin_3)
 {
   emxArray_char_T *b_varargin_3;
@@ -33,17 +36,54 @@ static void b_m2c_error(const emxArray_char_T *varargin_3)
   emxFree_char_T(&b_varargin_3);
 }
 
+static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend)
+{
+  int jj;
+  int ii;
+  for (jj = cend - 1; jj + 1 > 0; jj--) {
+    for (ii = jj + 1; ii + 1 <= cend; ii++) {
+      bs->data[jj] -= R->data[jj + R->size[0] * ii] * bs->data[ii];
+    }
+
+    bs->data[jj] /= R->data[jj + R->size[0] * jj];
+  }
+}
+
+static void c_m2c_error(void)
+{
+  M2C_error("crs_prodAx:BufferTooSmal",
+            "Buffer space for output b is too small.");
+}
+
 static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
   *A_col_ind, const emxArray_real_T *A_val, int A_nrows, const emxArray_real_T
-  *x, emxArray_real_T *b)
+  *x, emxArray_real_T *b, int nthreads)
 {
-  int i3;
-  i3 = b->size[0];
-  b->size[0] = A_nrows;
-  emxEnsureCapacity((emxArray__common *)b, i3, sizeof(double));
-  i3 = b->size[0];
-  crs_prodAx_kernel(A_row_ptr, A_col_ind, A_val, x, x->size[0], b, i3, A_nrows,
-                    1, false);
+  int n;
+  int b_n;
+  if (b->size[0] < A_nrows) {
+    c_m2c_error();
+  }
+
+  n = omp_get_num_threads();
+  b_n = omp_get_nested();
+  if ((!(b_n != 0)) && (n > 1) && (nthreads > 1)) {
+
+#pragma omp master
+    {
+      m2c_warn();
+    }
+
+  }
+
+#pragma omp parallel default(shared) num_threads(nthreads)
+  {
+    n = omp_get_num_threads();
+    b_n = b->size[0];
+    crs_prodAx_kernel(A_row_ptr, A_col_ind, A_val, x, x->size[0], b, b_n, A_nrows,
+                      1, n > 1);
+  }
+
 }
 
 static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
@@ -125,11 +165,17 @@ static void m2c_printf(int varargin_2, double varargin_3)
              varargin_3);
 }
 
+static void m2c_warn(void)
+{
+  M2C_warn("crs_prodAx:NestedParallel",
+           "You are trying to use nested parallel regions. Solution may be incorrect.");
+}
+
 void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
   struct1_T *prec, int restart, double rtol, int maxit, const emxArray_real_T
-  *x0, int verbose, const struct1_T *param, const emxArray_real_T *rowscal,
-  const emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int *iter,
-  emxArray_real_T *resids)
+  *x0, int verbose, int nthreads, const struct1_T *param, const emxArray_real_T *
+  rowscal, const emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int
+  *iter, emxArray_real_T *resids)
 {
   int n;
   double resid;
@@ -141,8 +187,10 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
   emxArray_real_T *R;
   emxArray_real_T *J;
   emxArray_real_T *dx;
+  emxArray_real_T *Ax;
   emxArray_real_T *V;
   emxArray_real_T *Z;
+  emxArray_real_T *w;
   emxArray_real_T *dbuff;
   boolean_T p;
   boolean_T b_p;
@@ -159,7 +207,7 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
   DILUPACKparam * t_param;
   int it_outer;
-  emxArray_real_T *Ax;
+  emxArray_real_T *u;
   emxArray_real_T *v;
   emxArray_int32_T *r0;
   emxArray_real_T *b_Z;
@@ -255,6 +303,15 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
       dx->data[i0] = 0.0;
     }
 
+    emxInit_real_T(&Ax, 1);
+    i0 = Ax->size[0];
+    Ax->size[0] = b->size[0];
+    emxEnsureCapacity((emxArray__common *)Ax, i0, sizeof(double));
+    ii = b->size[0];
+    for (i0 = 0; i0 < ii; i0++) {
+      Ax->data[i0] = 0.0;
+    }
+
     emxInit_real_T(&V, 2);
     i0 = V->size[0] * V->size[1];
     V->size[0] = b->size[0];
@@ -273,6 +330,15 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     ii = b->size[0] * restart;
     for (i0 = 0; i0 < ii; i0++) {
       Z->data[i0] = 0.0;
+    }
+
+    emxInit_real_T(&w, 1);
+    i0 = w->size[0];
+    w->size[0] = b->size[0];
+    emxEnsureCapacity((emxArray__common *)w, i0, sizeof(double));
+    ii = b->size[0];
+    for (i0 = 0; i0 < ii; i0++) {
+      w->data[i0] = 0.0;
     }
 
     emxInit_real_T(&dbuff, 1);
@@ -394,7 +460,7 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     t_param = *(DILUPACKparam **)(&data->data[0]);
     it_outer = 1;
     emxFree_uint8_T(&data);
-    emxInit_real_T(&Ax, 1);
+    emxInit_real_T(&u, 1);
     emxInit_real_T(&v, 1);
     emxInit_int32_T(&r0, 2);
     emxInit_real_T(&b_Z, 1);
@@ -412,50 +478,50 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
         if (resid > 0.0) {
           guard1 = true;
         } else {
-          i0 = Ax->size[0];
-          Ax->size[0] = b->size[0];
-          emxEnsureCapacity((emxArray__common *)Ax, i0, sizeof(double));
+          i0 = u->size[0];
+          u->size[0] = b->size[0];
+          emxEnsureCapacity((emxArray__common *)u, i0, sizeof(double));
           ii = b->size[0];
           for (i0 = 0; i0 < ii; i0++) {
-            Ax->data[i0] = b->data[i0];
+            u->data[i0] = b->data[i0];
           }
         }
       }
 
       if (guard1) {
-        crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, Ax);
-        i0 = Ax->size[0];
-        Ax->size[0] = b->size[0];
-        emxEnsureCapacity((emxArray__common *)Ax, i0, sizeof(double));
+        crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, Ax, nthreads);
+        i0 = u->size[0];
+        u->size[0] = b->size[0];
+        emxEnsureCapacity((emxArray__common *)u, i0, sizeof(double));
         ii = b->size[0];
         for (i0 = 0; i0 < ii; i0++) {
-          Ax->data[i0] = b->data[i0] - Ax->data[i0];
+          u->data[i0] = b->data[i0] - Ax->data[i0];
         }
       }
 
       resid = 0.0;
-      for (ii = 0; ii + 1 <= Ax->size[0]; ii++) {
-        resid += Ax->data[ii] * Ax->data[ii];
+      for (ii = 0; ii + 1 <= u->size[0]; ii++) {
+        resid += u->data[ii] * u->data[ii];
       }
 
       beta = sqrt(resid);
-      if (Ax->data[0] < 0.0) {
+      if (u->data[0] < 0.0) {
         beta = -beta;
       }
 
-      resid = sqrt(2.0 * resid + 2.0 * Ax->data[0] * beta);
-      Ax->data[0] += beta;
-      i0 = Ax->size[0];
-      emxEnsureCapacity((emxArray__common *)Ax, i0, sizeof(double));
-      ii = Ax->size[0];
+      resid = sqrt(2.0 * resid + 2.0 * u->data[0] * beta);
+      u->data[0] += beta;
+      i0 = u->size[0];
+      emxEnsureCapacity((emxArray__common *)u, i0, sizeof(double));
+      ii = u->size[0];
       for (i0 = 0; i0 < ii; i0++) {
-        Ax->data[i0] /= resid;
+        u->data[i0] /= resid;
       }
 
       y->data[0] = -beta;
-      ii = Ax->size[0];
+      ii = u->size[0];
       for (i0 = 0; i0 < ii; i0++) {
-        V->data[i0] = Ax->data[i0];
+        V->data[i0] = u->data[i0];
       }
 
       j = 0;
@@ -518,43 +584,43 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
           b_Z->data[i0] = Z->data[i0 + Z->size[0] * j];
         }
 
-        crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, b_Z, v);
+        crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, b_Z, w, nthreads);
         for (i = 0; i + 1 <= j + 1; i++) {
-          resid = V->data[i + V->size[0] * i] * v->data[i];
+          resid = V->data[i + V->size[0] * i] * w->data[i];
           for (ii = i + 1; ii + 1 <= n; ii++) {
-            resid += V->data[ii + V->size[0] * i] * v->data[ii];
+            resid += V->data[ii + V->size[0] * i] * w->data[ii];
           }
 
           resid *= 2.0;
           for (ii = i; ii + 1 <= n; ii++) {
-            v->data[ii] -= resid * V->data[ii + V->size[0] * i];
+            w->data[ii] -= resid * V->data[ii + V->size[0] * i];
           }
         }
 
         if (j + 1 < n) {
-          Ax->data[j] = 0.0;
-          Ax->data[j + 1] = v->data[j + 1];
-          resid = v->data[j + 1] * v->data[j + 1];
+          u->data[j] = 0.0;
+          u->data[j + 1] = w->data[j + 1];
+          resid = w->data[j + 1] * w->data[j + 1];
           for (ii = j + 2; ii + 1 <= n; ii++) {
-            Ax->data[ii] = v->data[ii];
-            resid += v->data[ii] * v->data[ii];
+            u->data[ii] = w->data[ii];
+            resid += w->data[ii] * w->data[ii];
           }
 
           if (resid > 0.0) {
             beta = sqrt(resid);
-            if (Ax->data[j + 1] < 0.0) {
+            if (u->data[j + 1] < 0.0) {
               beta = -beta;
             }
 
             if (j + 1 < restart) {
-              resid = sqrt(2.0 * resid + 2.0 * Ax->data[j + 1] * beta);
-              Ax->data[j + 1] += beta;
+              resid = sqrt(2.0 * resid + 2.0 * u->data[j + 1] * beta);
+              u->data[j + 1] += beta;
               for (ii = j + 1; ii + 1 <= n; ii++) {
-                V->data[ii + V->size[0] * (j + 1)] = Ax->data[ii] / resid;
+                V->data[ii + V->size[0] * (j + 1)] = u->data[ii] / resid;
               }
             }
 
-            i0 = v->size[0];
+            i0 = w->size[0];
             if (j + 3 > i0) {
               i = 1;
               i0 = 0;
@@ -573,29 +639,29 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
             ii = r0->size[0] * r0->size[1];
             for (i0 = 0; i0 < ii; i0++) {
-              v->data[r0->data[i0]] = 0.0;
+              w->data[r0->data[i0]] = 0.0;
             }
 
-            v->data[j + 1] = -beta;
+            w->data[j + 1] = -beta;
           }
         }
 
         for (ii = 0; ii + 1 <= j; ii++) {
-          resid = v->data[ii];
-          v->data[ii] = J->data[J->size[0] * ii] * v->data[ii] + J->data[1 +
-            J->size[0] * ii] * v->data[ii + 1];
-          v->data[ii + 1] = -J->data[1 + J->size[0] * ii] * resid + J->data
-            [J->size[0] * ii] * v->data[ii + 1];
+          resid = w->data[ii];
+          w->data[ii] = J->data[J->size[0] * ii] * w->data[ii] + J->data[1 +
+            J->size[0] * ii] * w->data[ii + 1];
+          w->data[ii + 1] = -J->data[1 + J->size[0] * ii] * resid + J->data
+            [J->size[0] * ii] * w->data[ii + 1];
         }
 
-        if (j + 1 != v->size[0]) {
-          resid = sqrt(v->data[j] * v->data[j] + v->data[j + 1] * v->data[j + 1]);
-          J->data[J->size[0] * j] = v->data[j] / resid;
-          J->data[1 + J->size[0] * j] = v->data[j + 1] / resid;
+        if (j + 1 != w->size[0]) {
+          resid = sqrt(w->data[j] * w->data[j] + w->data[j + 1] * w->data[j + 1]);
+          J->data[J->size[0] * j] = w->data[j] / resid;
+          J->data[1 + J->size[0] * j] = w->data[j + 1] / resid;
           y->data[j + 1] = -J->data[1 + J->size[0] * j] * y->data[j];
           y->data[j] *= J->data[J->size[0] * j];
-          v->data[j] = resid;
-          v->data[j + 1] = 0.0;
+          w->data[j] = resid;
+          w->data[j + 1] = 0.0;
         }
 
         if (1 > restart) {
@@ -605,7 +671,7 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
         }
 
         for (i0 = 0; i0 <= ii; i0++) {
-          R->data[i0 + R->size[0] * j] = v->data[i0];
+          R->data[i0 + R->size[0] * j] = w->data[i0];
         }
 
         resid = fabs(y->data[j + 1]) / beta0;
@@ -626,14 +692,7 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
         m2c_printf(*iter, resid);
       }
 
-      for (i = j; i + 1 > 0; i--) {
-        for (ii = i + 1; ii + 1 <= j + 1; ii++) {
-          y->data[i] -= R->data[i + R->size[0] * ii] * y->data[ii];
-        }
-
-        y->data[i] /= R->data[i + R->size[0] * i];
-      }
-
+      backsolve(R, y, j + 1);
       beta = y->data[j];
       ii = Z->size[0];
       i0 = dx->size[0];
@@ -672,10 +731,12 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     emxFree_real_T(&b_Z);
     emxFree_int32_T(&r0);
     emxFree_real_T(&v);
-    emxFree_real_T(&Ax);
+    emxFree_real_T(&u);
     emxFree_real_T(&dbuff);
+    emxFree_real_T(&w);
     emxFree_real_T(&Z);
     emxFree_real_T(&V);
+    emxFree_real_T(&Ax);
     emxFree_real_T(&dx);
     emxFree_real_T(&J);
     emxFree_real_T(&R);

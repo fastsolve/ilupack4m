@@ -25,14 +25,18 @@ function [x, flag, iter, resids, times] = fgmresMILU(varargin)
 %    takes an initial solution in x0. Use 0 or [] to preserve the default
 %    initial solution (all zeros).
 %
-%    x = fgmresMILU(A, b, restart, rtol, maxit, x0, opts)
-%    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol, maxit, x0, opts)
+%    x = fgmresMILU(A, b, restart, rtol, maxit, x0, nthreads)
+%    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol, maxit, x0, nthreads, opts)
+%    allows you to specify number of threads for matrix-vector multiplication
+%
+%    x = fgmresMILU(A, b, restart, rtol, maxit, x0, nthreads, opts)
+%    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol, maxit, x0, nthreads, opts)
 %    allows you to specify additional options for ILUPACK.
 %
-%    [x, flag, iter, resids, times] = fgmresMILU(...) returns the iteration 
+%    [x, flag, iter, resids, times] = fgmresMILU(...) returns the iteration
 %      counta, nd the history of relative residuals, and runtimes
-% 
-% Note: The algorithm uses Householder reflectors for orthogonalization. 
+%
+% Note: The algorithm uses Householder reflectors for orthogonalization.
 % It is more expensive than modified Gram-Schmidtz but is more robust.
 
 if nargin == 0
@@ -66,7 +70,7 @@ end
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
-prec = MILUinit(varargin{1:next_index-1}, varargin{next_index+1:end});
+prec = MILUinit(varargin{1:next_index-1}, varargin{next_index+6:end});
 times(1) = toc;
 
 if verbose
@@ -101,6 +105,12 @@ else
     x0 = cast([], class(b));
 end
 
+if nargin >= next_index + 5 && ~isempty(varargin{next_index+5})
+    nthreads = int32(varargin{next_index+5});
+else
+    nthreads = ompGetMaxThreads();
+end
+
 if verbose
     fprintf(1, 'Starting Krylov solver ...\n');
 end
@@ -112,11 +122,11 @@ if exist(['fgmresMILU_kernel.' mexext], 'file')
     param = MILU_Dparam(prec(1).param, true);
 
     [x, flag, iter, resids] = fgmresMILU_kernel(A, b, ptr, ...
-        restart, rtol, maxit, x0, verbose, param, ...
+        restart, rtol, maxit, x0, verbose, nthreads, param, ...
         prec(1).rowscal', prec(1).colscal');
 else
     [x, flag, iter, resids] = fgmresMILU_kernel(A, b, prec, ...
-        restart, rtol, maxit, x0, verbose);
+        restart, rtol, maxit, x0, verbose, nthreads);
 end
 times(2) = toc;
 

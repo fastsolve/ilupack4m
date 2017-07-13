@@ -1,16 +1,16 @@
 function [x, flag, iter, resids] = fgmresMILU_kernel(A, b, ...
-    prec, restart, rtol, maxit, x0, verbose, param, rowscal, colscal)
+    prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
 %fgmresMILU_kernel The kernel function of fgmresMILU
 %
-%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, param)
-%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, param, rowscal, colscal)
+%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param)
+%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
 %
 %   [x, flag, iter, resids] = fgmresMILU_kernel(...)
 %
 % See also: fgmresMILU
 
 %#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, int32(0), 0.,
-%#codegen int32(0), m2c_vec, int32(0), MILU_Dparam, m2c_vec, m2c_vec}
+%#codegen int32(0), m2c_vec, int32(0), int32(0), MILU_Dparam, m2c_vec, m2c_vec}
 
 n = int32(size(b, 1));
 
@@ -46,12 +46,14 @@ y = zeros(restart+1, 1);
 R = zeros(restart, restart);
 J = zeros(2, restart);
 dx = zeros(n, 1);
+Ax = zeros(n, 1);
 
 % Krylov subspace
 V = zeros(n, restart);
 % Preconditioned subspace
 Z = zeros(n, restart);
 
+w = zeros(n, 1);
 % Allocate 3n buffer space for ILUPACK
 dbuff = zeros(3*n, 1);
 
@@ -70,15 +72,15 @@ end
 for it_outer = 1:max_outer_iters
     % Compute the initial residual
     if (it_outer > 1) || vec_sqnorm2(x) > 0
-        Ax = crs_prodAx(A, x);
+        Ax = crs_prodAx(A, x, Ax, nthreads);
         u = b - Ax;
     else
         u = b;
     end
-    
+
     beta2 = vec_sqnorm2(u);
     beta = sqrt(beta2);
-    
+
     % Prepare the first Householder vector
     if (u(1) < 0)
         beta = -beta;
@@ -86,15 +88,15 @@ for it_outer = 1:max_outer_iters
     updated_norm = sqrt(2*beta2+2*real(u(1))*beta);
     u(1) = u(1) + beta;
     u = u / updated_norm;
-    
+
     % The first Householder entry
     y(1) = - beta;
     V(:, 1) = u;
-    
+
     j = int32(1);
     while true
         % Construct the last vector from the Householder reflectors
-        
+
         %  v = Pj*ej = ej - 2*u*u'*ej
         v = -2 * conj(V(j, j)) * V(:, j);
         v(j) = v(j) + 1;
@@ -112,7 +114,7 @@ for it_outer = 1:max_outer_iters
                     s = s + conj(V(k, i)) * v(k);
                 end
                 s = 2 * s;
-                
+
                 for k = i:n
                     v(k) = v(k) - s * V(k, i);
                 end
@@ -120,7 +122,7 @@ for it_outer = 1:max_outer_iters
         end
         %  Explicitly normalize v to reduce the effects of round-off.
         v = v / sqrt(vec_sqnorm2(v));
-        
+
         % Store the preconditioned vector
         if isempty(coder.target)
             Z(:, j) = ILUsol(prec, v);
@@ -132,8 +134,8 @@ for it_outer = 1:max_outer_iters
                 coder.rref(vscaled), coder.ref(dx), coder.ref(dbuff));
             Z(:, j) = dx .* colscal;
         end
-        w = crs_prodAx(A, Z(:, j));
-        
+        w = crs_prodAx(A, Z(:, j), w, nthreads);
+
         % Orthogonalize the Krylov vector
         %  Form Pj*Pj-1*...P1*Av.
         if isempty(coder.target)
@@ -149,13 +151,13 @@ for it_outer = 1:max_outer_iters
                     s = s + conj(V(k, i)) * w(k);
                 end
                 s = s * 2;
-                
+
                 for k = i:n
                     w(k) = w(k) - s * V(k, i);
                 end
             end
         end
-        
+
         % Update the rotators
         %  Determine Pj+1.
         if j < n
@@ -167,7 +169,7 @@ for it_outer = 1:max_outer_iters
                 u(k) = w(k);
                 alpha2 = alpha2 + conj(w(k)) * w(k);
             end
-            
+
             if alpha2 > 0
                 alpha = sqrt(alpha2);
                 if u(j+1) < 0
@@ -180,20 +182,20 @@ for it_outer = 1:max_outer_iters
                         V(k, j+1) = u(k) / updated_norm;
                     end
                 end
-                
+
                 %  Apply Pj+1 to v.
                 w(j+2:end) = 0;
                 w(j+1) = - alpha;
             end
         end
-        
+
         %  Apply Given's rotations to the newly formed v.
         for colJ = 1:j - 1
             tmpv = w(colJ);
             w(colJ) = conj(J(1, colJ)) * w(colJ) + conj(J(2, colJ)) * w(colJ+1);
             w(colJ+1) = - J(2, colJ) * tmpv + J(1, colJ) * w(colJ+1);
         end
-        
+
         %  Compute Given's rotation Jm.
         if (j ~= length(w))
             rho = sqrt(w(j)'*w(j)+w(j+1)'*w(j+1));
@@ -204,40 +206,40 @@ for it_outer = 1:max_outer_iters
             w(j) = rho;
             w(j+1) = 0;
         end
-        
+
         R(:, j) = w(1:restart);
-        
+
         resid = abs(y(j+1)) / beta0;
         iter = iter + 1;
-        
+
         if verbose > 1
             m2c_printf('At iteration %d, relative residual is %g.\n', iter, resid);
         end
-        
+
         % save the residual
         if nargout > 3
             resids(iter) = resid;
         end
-        
+
         if resid < rtol || j >= restart
             break;
         end
         j = j + 1;
     end
-    
+
     if verbose > 0
         m2c_printf('At iteration %d, relative residual is %g.\n', iter, resid);
     end
-    
+
     % Correction
     y = backsolve(R, y, j);
-    
+
     dx = y(j) * Z(:, j);
     for i = j - 1:-1:1
         dx = dx + y(i) * Z(:, i);
     end
     x = x + dx;
-    
+
     if (resid < rtol)
         break;
     end
