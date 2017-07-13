@@ -57,20 +57,30 @@ else
     b = varargin{next_index};
 end
 
+verbose = int32(5 - nargout);
+
+if verbose
+    fprintf(1, 'Performing ILU facotirzation...\n');
+end
+
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
 prec = MILUinit(varargin{1:next_index-1}, varargin{next_index+1:end});
 times(1) = toc;
 
-if nargout < 5
-    fprintf(1, 'Finished setup in %.1f seconds \n', times(1));
+if verbose
+    fprintf(1, 'Finished ILU factorization in %.1f seconds \n', times(1));
 end
 
 if nargin >= next_index + 1 && ~isempty(varargin{next_index+1})
     restart = int32(varargin{next_index+1});
 else
     restart = int32(30);
+end
+
+if restart > 100
+    m2c_warning('You set restart to %d. It is recommended to maker it no greater than 100.\n', restart);
 end
 
 if nargin >= next_index + 2 && ~isempty(varargin{next_index+2})
@@ -91,12 +101,27 @@ else
     x0 = cast([], class(b));
 end
 
+if verbose
+    fprintf(1, 'Starting Krylov solver ...\n');
+end
+
 tic;
-[x, flag, iter, resids] = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0);
+if exist(['fgmresMILU_kernel.' mexext], 'file')
+    % Calling MEX function
+    ptr = MILU_Dmat(prec(1).ptr, true);
+    param = MILU_Dparam(prec(1).param, true);
+
+    [x, flag, iter, resids] = fgmresMILU_kernel(A, b, ptr, ...
+        restart, rtol, maxit, x0, verbose, param, ...
+        prec(1).rowscal', prec(1).colscal');
+else
+    [x, flag, iter, resids] = fgmresMILU_kernel(A, b, prec, ...
+        restart, rtol, maxit, x0, verbose);
+end
 times(2) = toc;
 
-if nargout < 5
-    fprintf(1, 'Finished solve in %d iterations and %.1f seconds \n', iter, times(2));
+if verbose
+    fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', iter, times(2));
 end
 
 prec = ILUdelete(prec); %#ok<NASGU>
@@ -113,7 +138,7 @@ function test %#ok<DEFNU>
 %! b = s.b;
 %! rtol = 1.e-5;
 %
-%! [x, flag, iter, resids] = fgmresMILU(A, b, [], rtol);
+%! [x, flag, iter, resids] = fgmresMILU(A, b, [], rtol, 100);
 %! assert(norm(b - A*x) < rtol * norm(b))
 
 end
