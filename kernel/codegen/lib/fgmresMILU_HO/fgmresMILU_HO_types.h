@@ -1,5 +1,5 @@
-#ifndef FGMRESMILU_KERNEL_TYPES_H
-#define FGMRESMILU_KERNEL_TYPES_H
+#ifndef FGMRESMILU_HO_TYPES_H
+#define FGMRESMILU_HO_TYPES_H
 #include "rtwtypes.h"
 #ifndef struct_emxArray__common
 #define struct_emxArray__common

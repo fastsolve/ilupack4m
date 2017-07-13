@@ -1,4 +1,4 @@
-#include "fgmresMILU_kernel.h"
+#include "fgmresMILU_HO.h"
 #include "m2c.h"
 #include "omp.h"
 #include "ilupack.h"
@@ -171,11 +171,12 @@ static void m2c_warn(void)
            "You are trying to use nested parallel regions. Solution may be incorrect.");
 }
 
-void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
-  struct1_T *prec, int restart, double rtol, int maxit, const emxArray_real_T
-  *x0, int verbose, int nthreads, const struct1_T *param, const emxArray_real_T *
-  rowscal, const emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int
-  *iter, emxArray_real_T *resids)
+void fgmresMILU_HO(const struct0_T *A, const emxArray_real_T *b, const struct1_T
+                   *prec, int restart, double rtol, int maxit, const
+                   emxArray_real_T *x0, int verbose, int nthreads, const
+                   struct1_T *param, const emxArray_real_T *rowscal, const
+                   emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int *
+                   iter, emxArray_real_T *resids)
 {
   int n;
   double resid;
@@ -757,10 +758,10 @@ void fgmresMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
   }
 }
 
-void fgmresMILU_kernel_initialize(void)
+void fgmresMILU_HO_initialize(void)
 {
 }
 
-void fgmresMILU_kernel_terminate(void)
+void fgmresMILU_HO_terminate(void)
 {
 }

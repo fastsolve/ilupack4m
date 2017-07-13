@@ -1,11 +1,11 @@
-function [x, flag, iter, resids] = fgmresMILU_kernel(A, b, ...
+function [x, flag, iter, resids] = fgmresMILU_GS(A, b, ...
     prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
-%fgmresMILU_kernel The kernel function of fgmresMILU
+%fgmresMILU_GS Kernel of fgmresMILU using Gauss-Seidel orthogonalization
 %
-%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param)
-%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
+%   x = fgmresMILU_GS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param)
+%   x = fgmresMILU_GS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
 %
-%   [x, flag, iter, resids] = fgmresMILU_kernel(...)
+%   [x, flag, iter, resids] = fgmresMILU_GS(...)
 %
 % See also: fgmresMILU
 
