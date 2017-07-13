@@ -19,9 +19,14 @@ before_install:
   - gd-get-pub -o - -i "$MEX_LINUX" | sudo bsdtar zxf - -C /usr/local --strip-components 2
   - sudo ln -s -f /usr/local/MATLAB/R*/bin/mex /usr/local/bin
 
+<<<<<<< HEAD
 # Inatall paracoder
 script:
   - 'cd .. && 
+=======
+script:
+  - 'cd .. && 
+>>>>>>> next
      mkdir -p paracoder  && 
      curl -s  -L https://github.com/fastsolve/paracoder/archive/master.zip |
      bsdtar zxf - --strip-components 1 -C paracoder && 
