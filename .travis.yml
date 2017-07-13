@@ -20,10 +20,10 @@ before_install:
   - sudo ln -s -f /usr/local/MATLAB/R*/bin/mex /usr/local/bin
 
 script:
-  - 'cd .. && 
-     mkdir -p paracoder  && 
-     curl -s  -L https://github.com/fastsolve/paracoder/archive/master.zip |
-     bsdtar zxf - --strip-components 1 -C paracoder && 
-     cd ilupack'
+  - 'cd .. &&
+     mkdir -p paracoder &&
+     curl -s -L https://github.com/fastsolve/paracoder/archive/master.zip |
+     bsdtar zxf - --strip-components 1 -C paracoder &&
+     cd ilupack'
   - octave --eval "build_milu; run tests/test_aes_fem.m"
   - octave --eval "build_milu -matlab"
