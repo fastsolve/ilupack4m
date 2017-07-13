@@ -1,4 +1,4 @@
-function [x, options, times] = gmresMILU(varargin)
+function [x, flag, iter, times] = gmresMILU(varargin)
 % Solves a sparse system using GMRES with Multilevel ILU as right preconditioner
 %
 % Syntax:
@@ -28,6 +28,9 @@ function [x, options, times] = gmresMILU(varargin)
 %    x = gmresMILU(A, b, restart, rtol, maxit, x0, opts)
 %    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxit, x0, opts)
 %    allows you to specify additional options for ILUPACK.
+%
+%    [x, flag, iter, times] = gmresMILU(...) returns the iteration
+%      counts and runtimes.
 
 if nargin == 0
     help gmresMILU
@@ -45,13 +48,17 @@ else
     next_index = 4;
 end
 
-options = ILUinit(A);
-
 if nargin < next_index
     error('The right hand-side must be specified');
 else
     b = varargin{next_index};
 end
+
+% Perform ILU factorization
+times = zeros(2, 1);
+tic;
+[PREC, options] = MILUinit(varargin{1:next_index-1}, varargin{next_index+5:end});
+times(1) = toc;
 
 if nargin >= next_index + 1 && ~isempty(varargin{next_index+1})
     options.nrestart = cast(varargin{next_index+1}, class(options.nrestart));
@@ -85,11 +92,7 @@ if nargin >= next_index + 5 && ~isempty(varargin{next_index+5})
     end
 end
 
-% Perform ILU factorization
-times = zeros(2, 1);
-[PREC, options, times(1)] = MILUinit(A, options);
-
-if nargout < 3
+if nargout < 4
     fprintf(1, 'Finished setup in %.1f seconds \n', times(1));
 end
 
@@ -103,8 +106,17 @@ times(2) = toc;
 
 PREC = ILUdelete(PREC); %#ok<NASGU>
 
-if nargout < 3
-    fprintf(1, 'Finished solving in %.1f seconds \n', times(2));
+if options.niter >= options.maxit
+    % Reached max number of iterations
+    flag = int32(3);
+else
+    flag = int32(0);
+end
+
+iter = options.niter;
+
+if nargout < 4
+    fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', options.niter, times(2));
 end
 
 end
@@ -117,13 +129,13 @@ function test %#ok<DEFNU>
 %! A = s.A;
 %! s = load('fem2d_vec_cd.mat');
 %! b = s.b;
-%! rtol = 1.e-5;
+%! rtol = 1.e-7;
 %
-%! [x, options, times] = gmresMILU(A, b, [], rtol);
-%! assert(norm(b - A*x) < 1.e2 * rtol * norm(b))
+%! x = gmresMILU(A, b, [], rtol, 58);
+%! assert(norm(b - A*x) < 1.e3 * rtol * norm(b))
 
 %!test
-%! [x, options, times] = gmresMILU(A, b, 30, rtol);
-%! assert(norm(b - A*x) < 1.e2 * rtol * norm(b))
+%! x = gmresMILU(A, b, 30, rtol, 58);
+%! assert(norm(b - A*x) < 1.e3 * rtol * norm(b))
 
 end
