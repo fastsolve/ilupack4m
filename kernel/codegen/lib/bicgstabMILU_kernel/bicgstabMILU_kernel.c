@@ -1,11 +1,10 @@
-#include "fgmresMILU_HO.h"
+#include "bicgstabMILU_kernel.h"
 #include "m2c.h"
 #include "omp.h"
 #include "ilupack.h"
 
 static boolean_T any(const emxArray_boolean_T *x);
 static void b_m2c_error(const emxArray_char_T *varargin_3);
-static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend);
 static void c_m2c_error(void);
 static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
   *A_col_ind, const emxArray_real_T *A_val, int A_nrows, const emxArray_real_T
@@ -13,6 +12,7 @@ static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
 static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
   emxArray_int32_T *col_ind, const emxArray_real_T *val, const emxArray_real_T
   *x, emxArray_real_T *b, int nrows, boolean_T ismt);
+static int div_nde_s32_floor(int numerator, int denominator);
 static void m2c_error(const emxArray_char_T *varargin_3);
 static void m2c_printf(int varargin_2, double varargin_3);
 static void m2c_warn(void);
@@ -59,19 +59,6 @@ static void b_m2c_error(const emxArray_char_T *varargin_3)
 
   M2C_error(msgid, fmt, &b_varargin_3->data[0]);
   emxFree_char_T(&b_varargin_3);
-}
-
-static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend)
-{
-  int jj;
-  int ii;
-  for (jj = cend - 1; jj + 1 > 0; jj--) {
-    for (ii = jj + 1; ii + 1 <= cend; ii++) {
-      bs->data[jj] -= R->data[jj + R->size[0] * ii] * bs->data[ii];
-    }
-
-    bs->data[jj] /= R->data[jj + R->size[0] * jj];
-  }
 }
 
 static void c_m2c_error(void)
@@ -156,6 +143,19 @@ static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
   }
 }
 
+static int div_nde_s32_floor(int numerator, int denominator)
+{
+  int b_numerator;
+  if (((numerator < 0) != (denominator < 0)) && (numerator % denominator != 0))
+  {
+    b_numerator = -1;
+  } else {
+    b_numerator = 0;
+  }
+
+  return numerator / denominator + b_numerator;
+}
+
 static void m2c_error(const emxArray_char_T *varargin_3)
 {
   emxArray_char_T *b_varargin_3;
@@ -196,26 +196,19 @@ static void m2c_warn(void)
   M2C_warn(msgid, fmt);
 }
 
-void fgmresMILU_HO(const struct0_T *A, const emxArray_real_T *b, const struct1_T
-                   *prec, int restart, double rtol, int maxit, const
-                   emxArray_real_T *x0, int verbose, int nthreads, const
-                   struct1_T *param, const emxArray_real_T *rowscal, const
-                   emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int *
-                   iter, emxArray_real_T *resids)
+void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
+  struct1_T *prec, double rtol, int maxit, const emxArray_real_T *x0, int
+  verbose, int nthreads, const struct1_T *param, const emxArray_real_T *rowscal,
+  const emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int *iter,
+  emxArray_real_T *resids)
 {
-  int n;
   double resid;
   int ii;
-  double beta0;
+  double bnrm2;
   int i0;
-  int max_outer_iters;
-  emxArray_real_T *V;
-  emxArray_real_T *R;
-  emxArray_real_T *y;
-  emxArray_real_T *Z;
-  emxArray_real_T *J;
-  emxArray_real_T *dx;
-  emxArray_real_T *w;
+  emxArray_real_T *v;
+  emxArray_real_T *p;
+  emxArray_real_T *p_hat;
   emxArray_real_T *dbuff;
   boolean_T need_rowscaling;
   boolean_T need_colscaling;
@@ -233,24 +226,23 @@ void fgmresMILU_HO(const struct0_T *A, const emxArray_real_T *b, const struct1_T
   emxArray_boolean_T *b_rowscal;
   DILUPACKparam * t_param;
   emxArray_boolean_T *b_colscal;
-  int it_outer;
-  emxArray_real_T *u;
-  emxArray_real_T *v;
-  emxArray_int32_T *r0;
-  emxArray_real_T *b_Z;
-  boolean_T guard1 = false;
-  double beta;
-  int j;
+  emxArray_real_T *r;
+  emxArray_real_T *r_tld;
+  double omega;
+  double alpha;
+  double rho_1;
+  emxArray_real_T *a;
   int exitg2;
-  int i;
-  n = b->size[0];
+  double rho;
+  *flag = 0;
+  *iter = 0;
   resid = 0.0;
   for (ii = 0; ii + 1 <= b->size[0]; ii++) {
     resid += b->data[ii] * b->data[ii];
   }
 
-  beta0 = sqrt(resid);
-  if (beta0 == 0.0) {
+  bnrm2 = sqrt(resid);
+  if (bnrm2 == 0.0) {
     i0 = x->size[0];
     x->size[0] = b->size[0];
     emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
@@ -259,22 +251,11 @@ void fgmresMILU_HO(const struct0_T *A, const emxArray_real_T *b, const struct1_T
       x->data[i0] = 0.0;
     }
 
-    *flag = 0;
-    *iter = 0;
     i0 = resids->size[0];
     resids->size[0] = 1;
     emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
     resids->data[0] = 0.0;
   } else {
-    if (restart > b->size[0]) {
-      restart = b->size[0];
-    } else {
-      if (restart <= 0) {
-        restart = 1;
-      }
-    }
-
-    max_outer_iters = (int)ceil((double)maxit / (double)restart);
     if (x0->size[0] == 0) {
       i0 = x->size[0];
       x->size[0] = b->size[0];
@@ -293,70 +274,31 @@ void fgmresMILU_HO(const struct0_T *A, const emxArray_real_T *b, const struct1_T
       }
     }
 
-    emxInit_real_T(&V, 2);
-    i0 = V->size[0] * V->size[1];
-    V->size[0] = b->size[0];
-    V->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)V, i0, sizeof(double));
-    ii = b->size[0] * restart;
-    for (i0 = 0; i0 < ii; i0++) {
-      V->data[i0] = 0.0;
-    }
-
-    emxInit_real_T(&R, 2);
-    i0 = R->size[0] * R->size[1];
-    R->size[0] = restart;
-    R->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)R, i0, sizeof(double));
-    ii = restart * restart;
-    for (i0 = 0; i0 < ii; i0++) {
-      R->data[i0] = 0.0;
-    }
-
-    emxInit_real_T(&y, 1);
-    i0 = y->size[0];
-    y->size[0] = restart + 1;
-    emxEnsureCapacity((emxArray__common *)y, i0, sizeof(double));
-    for (i0 = 0; i0 <= restart; i0++) {
-      y->data[i0] = 0.0;
-    }
-
-    emxInit_real_T(&Z, 2);
-    i0 = Z->size[0] * Z->size[1];
-    Z->size[0] = b->size[0];
-    Z->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)Z, i0, sizeof(double));
-    ii = b->size[0] * restart;
-    for (i0 = 0; i0 < ii; i0++) {
-      Z->data[i0] = 0.0;
-    }
-
-    emxInit_real_T(&J, 2);
-    i0 = J->size[0] * J->size[1];
-    J->size[0] = 2;
-    J->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)J, i0, sizeof(double));
-    ii = restart << 1;
-    for (i0 = 0; i0 < ii; i0++) {
-      J->data[i0] = 0.0;
-    }
-
-    emxInit_real_T(&dx, 1);
-    i0 = dx->size[0];
-    dx->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)dx, i0, sizeof(double));
+    emxInit_real_T(&v, 1);
+    i0 = v->size[0];
+    v->size[0] = b->size[0];
+    emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
     ii = b->size[0];
     for (i0 = 0; i0 < ii; i0++) {
-      dx->data[i0] = 0.0;
+      v->data[i0] = 0.0;
     }
 
-    emxInit_real_T(&w, 1);
-    i0 = w->size[0];
-    w->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)w, i0, sizeof(double));
+    emxInit_real_T(&p, 1);
+    i0 = p->size[0];
+    p->size[0] = b->size[0];
+    emxEnsureCapacity((emxArray__common *)p, i0, sizeof(double));
     ii = b->size[0];
     for (i0 = 0; i0 < ii; i0++) {
-      w->data[i0] = 0.0;
+      p->data[i0] = 0.0;
+    }
+
+    emxInit_real_T(&p_hat, 1);
+    i0 = p_hat->size[0];
+    p_hat->size[0] = b->size[0];
+    emxEnsureCapacity((emxArray__common *)p_hat, i0, sizeof(double));
+    ii = b->size[0];
+    for (i0 = 0; i0 < ii; i0++) {
+      p_hat->data[i0] = 0.0;
     }
 
     emxInit_real_T(&dbuff, 1);
@@ -496,290 +438,302 @@ void fgmresMILU_HO(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     }
 
     need_colscaling = any(b_colscal);
-    *iter = 0;
-    resid = 1.0;
-    it_outer = 1;
+    resid = 0.0;
+    ii = 0;
     emxFree_boolean_T(&b_colscal);
-    emxInit_real_T(&u, 1);
-    emxInit_real_T(&v, 1);
-    emxInit_int32_T(&r0, 2);
-    emxInit_real_T(&b_Z, 1);
-    exitg1 = false;
-    while ((!exitg1) && (it_outer <= max_outer_iters)) {
-      guard1 = false;
-      if (it_outer > 1) {
-        guard1 = true;
-      } else {
-        resid = 0.0;
-        for (ii = 0; ii + 1 <= x->size[0]; ii++) {
-          resid += x->data[ii] * x->data[ii];
-        }
+    while (ii + 1 <= x->size[0]) {
+      resid += x->data[ii] * x->data[ii];
+      ii++;
+    }
 
-        if (resid > 0.0) {
-          guard1 = true;
-        } else {
-          i0 = u->size[0];
-          u->size[0] = b->size[0];
-          emxEnsureCapacity((emxArray__common *)u, i0, sizeof(double));
-          ii = b->size[0];
-          for (i0 = 0; i0 < ii; i0++) {
-            u->data[i0] = b->data[i0];
-          }
-        }
-      }
-
-      if (guard1) {
-        crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, w, nthreads);
-        i0 = u->size[0];
-        u->size[0] = b->size[0];
-        emxEnsureCapacity((emxArray__common *)u, i0, sizeof(double));
-        ii = b->size[0];
-        for (i0 = 0; i0 < ii; i0++) {
-          u->data[i0] = b->data[i0] - w->data[i0];
-        }
-      }
-
-      resid = 0.0;
-      for (ii = 0; ii + 1 <= u->size[0]; ii++) {
-        resid += u->data[ii] * u->data[ii];
-      }
-
-      beta = sqrt(resid);
-      if (u->data[0] < 0.0) {
-        beta = -beta;
-      }
-
-      resid = sqrt(2.0 * resid + 2.0 * u->data[0] * beta);
-      u->data[0] += beta;
-      i0 = u->size[0];
-      emxEnsureCapacity((emxArray__common *)u, i0, sizeof(double));
-      ii = u->size[0];
+    emxInit_real_T(&r, 1);
+    if (resid > 0.0) {
+      i0 = r->size[0];
+      r->size[0] = b->size[0];
+      emxEnsureCapacity((emxArray__common *)r, i0, sizeof(double));
+      ii = b->size[0];
       for (i0 = 0; i0 < ii; i0++) {
-        u->data[i0] /= resid;
+        r->data[i0] = 0.0;
       }
 
-      y->data[0] = -beta;
-      ii = u->size[0];
+      crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, r, nthreads);
+      i0 = r->size[0];
+      r->size[0] = b->size[0];
+      emxEnsureCapacity((emxArray__common *)r, i0, sizeof(double));
+      ii = b->size[0];
       for (i0 = 0; i0 < ii; i0++) {
-        V->data[i0] = u->data[i0];
+        r->data[i0] = b->data[i0] - r->data[i0];
+      }
+    } else {
+      i0 = r->size[0];
+      r->size[0] = b->size[0];
+      emxEnsureCapacity((emxArray__common *)r, i0, sizeof(double));
+      ii = b->size[0];
+      for (i0 = 0; i0 < ii; i0++) {
+        r->data[i0] = b->data[i0];
+      }
+    }
+
+    resid = 0.0;
+    for (ii = 0; ii + 1 <= r->size[0]; ii++) {
+      resid += r->data[ii] * r->data[ii];
+    }
+
+    resid = sqrt(resid) / bnrm2;
+    if (resid < rtol) {
+      i0 = resids->size[0];
+      resids->size[0] = 1;
+      emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
+      resids->data[0] = 0.0;
+    } else {
+      emxInit_real_T(&r_tld, 1);
+      omega = 1.0;
+      alpha = 0.0;
+      rho_1 = 0.0;
+      i0 = r_tld->size[0];
+      r_tld->size[0] = r->size[0];
+      emxEnsureCapacity((emxArray__common *)r_tld, i0, sizeof(double));
+      ii = r->size[0];
+      for (i0 = 0; i0 < ii; i0++) {
+        r_tld->data[i0] = r->data[i0];
       }
 
-      j = 1;
+      *iter = 1;
+      emxInit_real_T(&a, 2);
       do {
         exitg2 = 0;
-        resid = -2.0 * V->data[(j + V->size[0] * (j - 1)) - 1];
-        ii = V->size[0];
-        i0 = v->size[0];
-        v->size[0] = ii;
-        emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+        i0 = a->size[0] * a->size[1];
+        a->size[0] = 1;
+        a->size[1] = r_tld->size[0];
+        emxEnsureCapacity((emxArray__common *)a, i0, sizeof(double));
+        ii = r_tld->size[0];
         for (i0 = 0; i0 < ii; i0++) {
-          v->data[i0] = resid * V->data[i0 + V->size[0] * (j - 1)];
+          a->data[a->size[0] * i0] = r_tld->data[i0];
         }
 
-        v->data[j - 1]++;
-        for (i = j - 2; i + 1 > 0; i--) {
-          resid = V->data[i + V->size[0] * i] * v->data[i];
-          for (ii = i + 1; ii + 1 <= n; ii++) {
-            resid += V->data[ii + V->size[0] * i] * v->data[ii];
-          }
-
-          resid *= 2.0;
-          for (ii = i; ii + 1 <= n; ii++) {
-            v->data[ii] -= resid * V->data[ii + V->size[0] * i];
-          }
-        }
-
-        resid = 0.0;
-        for (ii = 0; ii + 1 <= v->size[0]; ii++) {
-          resid += v->data[ii] * v->data[ii];
-        }
-
-        resid = sqrt(resid);
-        i0 = v->size[0];
-        emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
-        ii = v->size[0];
-        for (i0 = 0; i0 < ii; i0++) {
-          v->data[i0] /= resid;
-        }
-
-        if (need_rowscaling) {
-          i0 = v->size[0];
-          emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
-          ii = v->size[0];
-          for (i0 = 0; i0 < ii; i0++) {
-            v->data[i0] *= rowscal->data[i0];
-          }
-        }
-
-        DGNLAMGsol_internal(t_prec, t_param, &v->data[0], &dx->data[0],
-                            &dbuff->data[0]);
-        if (need_colscaling) {
-          ii = dx->size[0];
-          for (i0 = 0; i0 < ii; i0++) {
-            Z->data[i0 + Z->size[0] * (j - 1)] = dx->data[i0] * colscal->data[i0];
+        if ((a->size[1] == 1) || (r->size[0] == 1)) {
+          rho = 0.0;
+          for (i0 = 0; i0 < a->size[1]; i0++) {
+            rho += a->data[a->size[0] * i0] * r->data[i0];
           }
         } else {
-          ii = dx->size[0];
-          for (i0 = 0; i0 < ii; i0++) {
-            Z->data[i0 + Z->size[0] * (j - 1)] = dx->data[i0];
+          rho = 0.0;
+          for (i0 = 0; i0 < a->size[1]; i0++) {
+            rho += a->data[a->size[0] * i0] * r->data[i0];
           }
         }
 
-        ii = Z->size[0];
-        i0 = b_Z->size[0];
-        b_Z->size[0] = ii;
-        emxEnsureCapacity((emxArray__common *)b_Z, i0, sizeof(double));
-        for (i0 = 0; i0 < ii; i0++) {
-          b_Z->data[i0] = Z->data[i0 + Z->size[0] * (j - 1)];
-        }
-
-        crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, b_Z, w, nthreads);
-        for (i = 0; i + 1 <= j; i++) {
-          resid = V->data[i + V->size[0] * i] * w->data[i];
-          for (ii = i + 1; ii + 1 <= n; ii++) {
-            resid += V->data[ii + V->size[0] * i] * w->data[ii];
-          }
-
-          resid *= 2.0;
-          for (ii = i; ii + 1 <= n; ii++) {
-            w->data[ii] -= resid * V->data[ii + V->size[0] * i];
-          }
-        }
-
-        if (j < n) {
-          u->data[j - 1] = 0.0;
-          u->data[j] = w->data[j];
-          resid = w->data[j] * w->data[j];
-          for (ii = j + 1; ii + 1 <= n; ii++) {
-            u->data[ii] = w->data[ii];
-            resid += w->data[ii] * w->data[ii];
-          }
-
-          if (resid > 0.0) {
-            beta = sqrt(resid);
-            if (u->data[j] < 0.0) {
-              beta = -beta;
+        if (rho == 0.0) {
+          exitg2 = 1;
+        } else {
+          if (*iter > 1) {
+            resid = rho / rho_1 * (alpha / omega);
+            i0 = p->size[0];
+            p->size[0] = r->size[0];
+            emxEnsureCapacity((emxArray__common *)p, i0, sizeof(double));
+            ii = r->size[0];
+            for (i0 = 0; i0 < ii; i0++) {
+              p->data[i0] = r->data[i0] + resid * (p->data[i0] - omega * v->
+                data[i0]);
             }
+          } else {
+            i0 = p->size[0];
+            p->size[0] = r->size[0];
+            emxEnsureCapacity((emxArray__common *)p, i0, sizeof(double));
+            ii = r->size[0];
+            for (i0 = 0; i0 < ii; i0++) {
+              p->data[i0] = r->data[i0];
+            }
+          }
 
-            if (j < restart) {
-              resid = sqrt(2.0 * resid + 2.0 * u->data[j] * beta);
-              u->data[j] += beta;
-              for (ii = j; ii + 1 <= n; ii++) {
-                V->data[ii + V->size[0] * j] = u->data[ii] / resid;
+          if (need_rowscaling) {
+            i0 = v->size[0];
+            v->size[0] = p->size[0];
+            emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+            ii = p->size[0];
+            for (i0 = 0; i0 < ii; i0++) {
+              v->data[i0] = p->data[i0] * rowscal->data[i0];
+            }
+          }
+
+          DGNLAMGsol_internal(t_prec, t_param, &v->data[0], &p_hat->data[0],
+                              &dbuff->data[0]);
+          if (need_colscaling) {
+            i0 = p_hat->size[0];
+            emxEnsureCapacity((emxArray__common *)p_hat, i0, sizeof(double));
+            ii = p_hat->size[0];
+            for (i0 = 0; i0 < ii; i0++) {
+              p_hat->data[i0] *= colscal->data[i0];
+            }
+          }
+
+          crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, p_hat, v,
+                     nthreads);
+          i0 = a->size[0] * a->size[1];
+          a->size[0] = 1;
+          a->size[1] = r_tld->size[0];
+          emxEnsureCapacity((emxArray__common *)a, i0, sizeof(double));
+          ii = r_tld->size[0];
+          for (i0 = 0; i0 < ii; i0++) {
+            a->data[a->size[0] * i0] = r_tld->data[i0];
+          }
+
+          if ((a->size[1] == 1) || (v->size[0] == 1)) {
+            rho_1 = 0.0;
+            for (i0 = 0; i0 < a->size[1]; i0++) {
+              rho_1 += a->data[a->size[0] * i0] * v->data[i0];
+            }
+          } else {
+            rho_1 = 0.0;
+            for (i0 = 0; i0 < a->size[1]; i0++) {
+              rho_1 += a->data[a->size[0] * i0] * v->data[i0];
+            }
+          }
+
+          alpha = rho / rho_1;
+          i0 = x->size[0];
+          emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
+          ii = x->size[0];
+          for (i0 = 0; i0 < ii; i0++) {
+            x->data[i0] += alpha * p_hat->data[i0];
+          }
+
+          i0 = r->size[0];
+          emxEnsureCapacity((emxArray__common *)r, i0, sizeof(double));
+          ii = r->size[0];
+          for (i0 = 0; i0 < ii; i0++) {
+            r->data[i0] -= alpha * v->data[i0];
+          }
+
+          resid = 0.0;
+          for (ii = 0; ii + 1 <= r->size[0]; ii++) {
+            resid += r->data[ii] * r->data[ii];
+          }
+
+          resid = sqrt(resid);
+          if (resid < rtol) {
+            resid /= bnrm2;
+            resids->data[*iter - 1] = resid;
+            exitg2 = 1;
+          } else {
+            if (need_rowscaling) {
+              i0 = v->size[0];
+              v->size[0] = r->size[0];
+              emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+              ii = r->size[0];
+              for (i0 = 0; i0 < ii; i0++) {
+                v->data[i0] = r->data[i0] * rowscal->data[i0];
               }
             }
 
-            if (j + 2 > w->size[0]) {
-              i0 = 1;
-              i = 0;
-            } else {
-              i0 = j + 2;
-              i = w->size[0];
+            DGNLAMGsol_internal(t_prec, t_param, &v->data[0], &p_hat->data[0],
+                                &dbuff->data[0]);
+            if (need_colscaling) {
+              i0 = p_hat->size[0];
+              emxEnsureCapacity((emxArray__common *)p_hat, i0, sizeof(double));
+              ii = p_hat->size[0];
+              for (i0 = 0; i0 < ii; i0++) {
+                p_hat->data[i0] *= colscal->data[i0];
+              }
             }
 
-            ii = r0->size[0] * r0->size[1];
-            r0->size[0] = 1;
-            r0->size[1] = (i - i0) + 1;
-            emxEnsureCapacity((emxArray__common *)r0, ii, sizeof(int));
-            ii = (i - i0) + 1;
-            for (i = 0; i < ii; i++) {
-              r0->data[r0->size[0] * i] = (i0 + i) - 1;
-            }
-
-            ii = r0->size[0] * r0->size[1];
+            crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, p_hat, v,
+                       nthreads);
+            i0 = a->size[0] * a->size[1];
+            a->size[0] = 1;
+            a->size[1] = v->size[0];
+            emxEnsureCapacity((emxArray__common *)a, i0, sizeof(double));
+            ii = v->size[0];
             for (i0 = 0; i0 < ii; i0++) {
-              w->data[r0->data[i0]] = 0.0;
+              a->data[a->size[0] * i0] = v->data[i0];
             }
 
-            w->data[j] = -beta;
+            if ((a->size[1] == 1) || (r->size[0] == 1)) {
+              rho_1 = 0.0;
+              for (i0 = 0; i0 < a->size[1]; i0++) {
+                rho_1 += a->data[a->size[0] * i0] * r->data[i0];
+              }
+            } else {
+              rho_1 = 0.0;
+              for (i0 = 0; i0 < a->size[1]; i0++) {
+                rho_1 += a->data[a->size[0] * i0] * r->data[i0];
+              }
+            }
+
+            resid = 0.0;
+            for (ii = 0; ii + 1 <= v->size[0]; ii++) {
+              resid += v->data[ii] * v->data[ii];
+            }
+
+            omega = rho_1 / resid;
+            i0 = x->size[0];
+            emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
+            ii = x->size[0];
+            for (i0 = 0; i0 < ii; i0++) {
+              x->data[i0] += omega * p_hat->data[i0];
+            }
+
+            i0 = r->size[0];
+            emxEnsureCapacity((emxArray__common *)r, i0, sizeof(double));
+            ii = r->size[0];
+            for (i0 = 0; i0 < ii; i0++) {
+              r->data[i0] -= omega * v->data[i0];
+            }
+
+            resid = 0.0;
+            for (ii = 0; ii + 1 <= r->size[0]; ii++) {
+              resid += r->data[ii] * r->data[ii];
+            }
+
+            resid = sqrt(resid) / bnrm2;
+            resids->data[*iter - 1] = resid;
+            if ((verbose > 1) || ((verbose > 0) && (*iter - div_nde_s32_floor
+                  (*iter, 30) * 30 == 0))) {
+              m2c_printf(*iter, resid);
+            }
+
+            if ((resid <= rtol) || (omega == 0.0)) {
+              exitg2 = 1;
+            } else {
+              rho_1 = rho;
+              if (*iter >= maxit) {
+                exitg2 = 1;
+              } else {
+                (*iter)++;
+              }
+            }
           }
-        }
-
-        for (ii = 0; ii + 1 < j; ii++) {
-          resid = w->data[ii];
-          w->data[ii] = J->data[J->size[0] * ii] * w->data[ii] + J->data[1 +
-            J->size[0] * ii] * w->data[ii + 1];
-          w->data[ii + 1] = -J->data[1 + J->size[0] * ii] * resid + J->data
-            [J->size[0] * ii] * w->data[ii + 1];
-        }
-
-        if (j < n) {
-          resid = sqrt(w->data[j - 1] * w->data[j - 1] + w->data[j] * w->data[j]);
-          J->data[J->size[0] * (j - 1)] = w->data[j - 1] / resid;
-          J->data[1 + J->size[0] * (j - 1)] = w->data[j] / resid;
-          y->data[j] = -J->data[1 + J->size[0] * (j - 1)] * y->data[j - 1];
-          y->data[j - 1] *= J->data[J->size[0] * (j - 1)];
-          w->data[j - 1] = resid;
-        }
-
-        for (i0 = 0; i0 < j; i0++) {
-          R->data[i0 + R->size[0] * (j - 1)] = w->data[i0];
-        }
-
-        resid = fabs(y->data[j]) / beta0;
-        (*iter)++;
-        if (verbose > 1) {
-          m2c_printf(*iter, resid);
-        }
-
-        resids->data[*iter - 1] = resid;
-        if ((resid < rtol) || (j >= restart)) {
-          exitg2 = 1;
-        } else {
-          j++;
         }
       } while (exitg2 == 0);
 
-      if (verbose == 1) {
-        m2c_printf(*iter, resid);
-      }
-
-      backsolve(R, y, j);
-      for (i = 0; i + 1 <= j; i++) {
-        beta = y->data[i];
-        i0 = x->size[0];
-        emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
-        ii = x->size[0];
-        for (i0 = 0; i0 < ii; i0++) {
-          x->data[i0] += beta * Z->data[i0 + Z->size[0] * i];
+      emxFree_real_T(&a);
+      emxFree_real_T(&r_tld);
+      i0 = resids->size[0];
+      resids->size[0] = *iter;
+      emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
+      if (!(resid <= rtol)) {
+        if (omega == 0.0) {
+          *flag = -2;
+        } else if (rho == 0.0) {
+          *flag = -1;
+        } else {
+          *flag = 1;
         }
       }
-
-      if (resid < rtol) {
-        exitg1 = true;
-      } else {
-        it_outer++;
-      }
     }
 
-    emxFree_real_T(&b_Z);
-    emxFree_int32_T(&r0);
-    emxFree_real_T(&v);
-    emxFree_real_T(&u);
     emxFree_real_T(&dbuff);
-    emxFree_real_T(&w);
-    emxFree_real_T(&dx);
-    emxFree_real_T(&J);
-    emxFree_real_T(&Z);
-    emxFree_real_T(&y);
-    emxFree_real_T(&R);
-    emxFree_real_T(&V);
-    i0 = resids->size[0];
-    if (1 > *iter) {
-      resids->size[0] = 0;
-    } else {
-      resids->size[0] = *iter;
-    }
-
-    emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
-    *flag = (resid > rtol);
+    emxFree_real_T(&p_hat);
+    emxFree_real_T(&p);
+    emxFree_real_T(&v);
+    emxFree_real_T(&r);
   }
 }
 
-void fgmresMILU_HO_initialize(void)
+void bicgstabMILU_kernel_initialize(void)
 {
 }
 
-void fgmresMILU_HO_terminate(void)
+void bicgstabMILU_kernel_terminate(void)
 {
 }

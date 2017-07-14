@@ -50,7 +50,7 @@ else
     x = x0;
 end
 
-% Householder matrix
+% Local linear system
 y = zeros(restart+1, 1);
 R = zeros(restart, restart);
 

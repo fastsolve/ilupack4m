@@ -72,6 +72,8 @@ else
     options.restol = cast(1.e-5, class(options.restol));
 end
 
+options.restol = options.restol / norm(PREC(1).rowscal);
+
 if nargin >= next_index + 3 && ~isempty(varargin{next_index+3})
     options.maxit = cast(varargin{next_index+3}, class(options.maxit));
 else
@@ -129,13 +131,13 @@ function test %#ok<DEFNU>
 %! A = s.A;
 %! s = load('fem2d_vec_cd.mat');
 %! b = s.b;
-%! rtol = 1.e-7;
+%! rtol = 1.e-5;
 %
-%! x = gmresMILU(A, b, [], rtol, 58);
-%! assert(norm(b - A*x) < 1.e3 * rtol * norm(b))
+%! x = gmresMILU(A, b, [], rtol, 100);
+%! assert(norm(b - A*x) < rtol * norm(b))
 
 %!test
-%! x = gmresMILU(A, b, 30, rtol, 58);
-%! assert(norm(b - A*x) < 1.e3 * rtol * norm(b))
+%! x = gmresMILU(A, b, 30, rtol, 100);
+%! assert(norm(b - A*x) < rtol * norm(b))
 
 end

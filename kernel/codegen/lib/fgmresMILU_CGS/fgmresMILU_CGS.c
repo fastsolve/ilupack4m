@@ -11,7 +11,7 @@ static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
   *x, emxArray_real_T *b, int nthreads);
 static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
   emxArray_int32_T *col_ind, const emxArray_real_T *val, const emxArray_real_T
-  *x, int x_m, emxArray_real_T *b, int b_m, int nrows, int nrhs, boolean_T ismt);
+  *x, emxArray_real_T *b, int nrows, boolean_T ismt);
 static void m2c_error(const emxArray_char_T *varargin_3);
 static void m2c_printf(int varargin_2, double varargin_3);
 static void m2c_warn(void);
@@ -40,9 +40,13 @@ static boolean_T any(const emxArray_boolean_T *x)
 static void b_m2c_error(const emxArray_char_T *varargin_3)
 {
   emxArray_char_T *b_varargin_3;
+  const char * msgid;
+  const char * fmt;
   int i2;
   int loop_ub;
   emxInit_char_T(&b_varargin_3, 2);
+  msgid = "m2c_opaque_obj:WrongInput";
+  fmt = "Incorrect data type %s. Expected DILUPACKparam *.\n";
   i2 = b_varargin_3->size[0] * b_varargin_3->size[1];
   b_varargin_3->size[0] = 1;
   b_varargin_3->size[1] = varargin_3->size[1];
@@ -52,16 +56,17 @@ static void b_m2c_error(const emxArray_char_T *varargin_3)
     b_varargin_3->data[i2] = varargin_3->data[i2];
   }
 
-  M2C_error("m2c_opaque_obj:WrongInput",
-            "Incorrect data type %s. Expected DILUPACKparam *.\n",
-            &b_varargin_3->data[0]);
+  M2C_error(msgid, fmt, &b_varargin_3->data[0]);
   emxFree_char_T(&b_varargin_3);
 }
 
 static void c_m2c_error(void)
 {
-  M2C_error("crs_prodAx:BufferTooSmal",
-            "Buffer space for output b is too small.");
+  const char * msgid;
+  const char * fmt;
+  msgid = "crs_prodAx:BufferTooSmal";
+  fmt = "Buffer space for output b is too small.";
+  M2C_error(msgid, fmt);
 }
 
 static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
@@ -88,71 +93,65 @@ static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
 #pragma omp parallel default(shared) num_threads(nthreads)
   {
     n = omp_get_num_threads();
-    b_n = b->size[0];
-    crs_prodAx_kernel(A_row_ptr, A_col_ind, A_val, x, x->size[0], b, b_n, A_nrows,
-                      1, n > 1);
+    crs_prodAx_kernel(A_row_ptr, A_col_ind, A_val, x, b, A_nrows, n > 1);
   }
 
 }
 
 static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
   emxArray_int32_T *col_ind, const emxArray_real_T *val, const emxArray_real_T
-  *x, int x_m, emxArray_real_T *b, int b_m, int nrows, int nrhs, boolean_T ismt)
+  *x, emxArray_real_T *b, int nrows, boolean_T ismt)
 {
   int istart;
   int iend;
-  int b_remainder;
-  int threadID;
-  int chunk;
-  int i;
   double t;
-  int j;
+  int chunk;
+  int b_remainder;
   if (ismt) {
-    iend = omp_get_num_threads();
-    if (iend == 1) {
+    istart = omp_get_num_threads();
+    if (istart == 1) {
       istart = 0;
       iend = nrows;
     } else {
-      threadID = omp_get_thread_num();
-      chunk = nrows / iend;
-      b_remainder = nrows - iend * chunk;
-      if (b_remainder < threadID) {
-        iend = b_remainder;
+      iend = omp_get_thread_num();
+      chunk = nrows / istart;
+      b_remainder = nrows - istart * chunk;
+      if (b_remainder < iend) {
+        istart = b_remainder;
       } else {
-        iend = threadID;
+        istart = iend;
       }
 
-      istart = threadID * chunk + iend;
-      iend = (istart + chunk) + (threadID < b_remainder);
+      istart += iend * chunk;
+      iend = (istart + chunk) + (iend < b_remainder);
     }
   } else {
     istart = 0;
     iend = nrows;
   }
 
-  b_remainder = -1;
-  threadID = -1;
-  for (chunk = 1; chunk <= nrhs; chunk++) {
-    for (i = istart + 1; i <= iend; i++) {
-      t = 0.0;
-      for (j = row_ptr->data[i - 1]; j < row_ptr->data[i]; j++) {
-        t += val->data[j - 1] * x->data[b_remainder + col_ind->data[j - 1]];
-      }
-
-      b->data[threadID + i] = t;
+  for (istart++; istart <= iend; istart++) {
+    t = 0.0;
+    for (b_remainder = row_ptr->data[istart - 1]; b_remainder < row_ptr->
+         data[istart]; b_remainder++) {
+      t += val->data[b_remainder - 1] * x->data[col_ind->data[b_remainder - 1] -
+        1];
     }
 
-    b_remainder += x_m;
-    threadID += b_m;
+    b->data[istart - 1] = t;
   }
 }
 
 static void m2c_error(const emxArray_char_T *varargin_3)
 {
   emxArray_char_T *b_varargin_3;
+  const char * msgid;
+  const char * fmt;
   int i1;
   int loop_ub;
   emxInit_char_T(&b_varargin_3, 2);
+  msgid = "m2c_opaque_obj:WrongInput";
+  fmt = "Incorrect data type %s. Expected DAMGlevelmat *.\n";
   i1 = b_varargin_3->size[0] * b_varargin_3->size[1];
   b_varargin_3->size[0] = 1;
   b_varargin_3->size[1] = varargin_3->size[1];
@@ -162,22 +161,25 @@ static void m2c_error(const emxArray_char_T *varargin_3)
     b_varargin_3->data[i1] = varargin_3->data[i1];
   }
 
-  M2C_error("m2c_opaque_obj:WrongInput",
-            "Incorrect data type %s. Expected DAMGlevelmat *.\n",
-            &b_varargin_3->data[0]);
+  M2C_error(msgid, fmt, &b_varargin_3->data[0]);
   emxFree_char_T(&b_varargin_3);
 }
 
 static void m2c_printf(int varargin_2, double varargin_3)
 {
-  M2C_printf("At iteration %d, relative residual is %g.\n", varargin_2,
-             varargin_3);
+  const char * fmt;
+  fmt = "At iteration %d, relative residual is %g.\n";
+  M2C_printf(fmt, varargin_2, varargin_3);
 }
 
 static void m2c_warn(void)
 {
-  M2C_warn("crs_prodAx:NestedParallel",
-           "You are trying to use nested parallel regions. Solution may be incorrect.");
+  const char * msgid;
+  const char * fmt;
+  msgid = "crs_prodAx:NestedParallel";
+  fmt =
+    "You are trying to use nested parallel regions. Solution may be incorrect.";
+  M2C_warn(msgid, fmt);
 }
 
 void fgmresMILU_CGS(const struct0_T *A, const emxArray_real_T *b, const
