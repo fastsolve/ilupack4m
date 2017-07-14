@@ -1,43 +1,35 @@
-function [x, flag, iter, resids, times] = gmresMILU(varargin)
-% gmresMILU GMRES with MILU as right preconditioner
+function [x, flag, iter, resids, times] = bicgstabMILU(varargin)
+% bicgstabMILU BiCGSTAB with MILU as right preconditioner
 %
-%    x = gmresMILU(A, b) solves a sparse linear system using ILUPACK's
+%    x = bicgstabMILU(A, b) solves a sparse linear system using ILUPACK's
 %    multilevel ILU as the right preconditioner. Matrix A can be in MATLAB's
 %    built-in sparse format or in CRS format created using crs_matrix.
 %
-%    x = gmresMILU(rowptr, colind, vals, b) takes a matrix in the CRS
+%    x = bicgstabMILU(rowptr, colind, vals, b) takes a matrix in the CRS
 %    format instead of MATLAB's built-in sparse format.
 %
-%    x = gmresMILU(A, b, restart)
-%    x = gmresMILU(rowptr, colind, vals, b, restart)
-%    specifies the number of iterations before GMRES restarts. If restart 
-%    is [], then use the default, 30.
-%
-%    x = gmresMILU(A, b, restart, rtol)
-%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol)
+%    x = bicgstabMILU(A, b, rtol)
+%    x = bicgstabMILU(rowptr, colind, vals, b, rtol)
 %    specifies the relative tolerance and the maximum number of iterations.
 %    If rtol is [], it will use the default value 1.e-6.
 %
-%    x = gmresMILU(A, b, restart, rtol, maxit)
-%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxit)
+%    x = bicgstabMILU(A, b, rtol, maxit)
+%    x = bicgstabMILU(rowptr, colind, vals, b, rtol, maxit)
 %    specifies the maximum number of iterations. If maxit is [], it 
-%    will use the default value 10000. (Note that unlike MATLAB's built-in
-%    gmres, maxit here refers to the total number of iterations.)
+%    will use the default value 10000.
 %
-%    x = gmresMILU(A, b, restart, rtol, maxiter, x0)
-%    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxiter, x0)
+%    x = bicgstabMILU(A, b, rtol, maxiter, x0)
+%    x = bicgstabMILU(rowptr, colind, vals, b, rtol, maxiter, x0)
 %    takes an initial guess for x in x0. Use [] to preserve the default
 %    initial solution (all zeros).
 %
-%    x = gmresMILU(A, b, ..., 'name', value, ...)
-%    x = gmresMILU(rowptr, colind, vals, b, ..., 'name', value, ...)
-%    allows omitting none or some of the positional arguments restart, rtol,
+%    x = bicgstabMILU(A, b, ..., 'name', value, ...)
+%    x = bicgstabMILU(rowptr, colind, vals, b, ..., 'name', value, ...)
+%    allows omitting none or some of the positional arguments rtol,
 %    maxiter and x0 and specifying these and other parameters in the form
 %    'param1_name', param1_value, 'param2_name', param2_value, and so on.
 %    The parameter names are not case sensitive. Available parameters and 
 %    their default values (enclosed by '[' and ']') are as follows:
-%
-%   'restart' [30]:   Number of iterations before restart
 %
 %   'rtol' [1.e-6]:   Relative tolerance for converegnce
 %
@@ -47,13 +39,8 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %   'verb' [5-nargout]:  Verbosity level. 
 %          0 - silent
-%          1 - outer iteration info
-%          2 - inner iteration info
-%
-%   'orth' ['MGS']: Orthogonalization strategy. 
-%          'CGS' - classical Gram-Schmidt (faster in parallel but less stable)
-%          'MGS' - modified Gram-Schmidt (slower in parallel but more stable)
-%          'HO'  - Householder (slowest but the most stable)
+%          1 - iteration info every 30 iterations
+%          2 - iteration info for all iterations
 %
 %   'ordering' ['amd']: Reorderings based on |A|+|A|'.
 %          'amd'    - Approximate Minimum Degree
@@ -84,23 +71,24 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %   'nthreads' [1]: maximal number of threads to use
 %
-%    [x, flag] = gmresMILU(...) returns a convergence flag.
-%    flag: 0 - converged to the desired tolerance TOL within MAXIT iterations.
-%          1 - iterated maxit times but did not converge.
-%          3  -stagnated (two consecutive iterates were the same).
-
-%    [x, flag, iter] = gmresMILU(...) returns the iteration count.
+%    [x, flag] = bicgstabMILU(...) returns a convergence flag.
+%    flag  0 - solution found to tolerance
+%          1 - no convergence given max_it
+%         -1 - breakdown: rho = 0
+%         -2 - breakdown: omega = 0
 %
-%    [x, flag, iter, resids] = gmresMILU(...) returns the relative 
+%    [x, flag, iter] = bicgstabMILU(...) returns the iteration count.
+%
+%    [x, flag, iter, resids] = bicgstabMILU(...) returns the relative 
 %    residual in 2-norm at each iteration.
 %
-%    [x, flag, iter, resids, times] = gmresMILU(...) returns the setup
+%    [x, flag, iter, resids, times] = bicgstabMILU(...) returns the setup
 %    time (times(1)) and solve time (times(2)) in seconds.
 %
 %  See also bicgstabMILU
 
 if nargin == 0
-    help gmresMILU
+    help bicgstabMILU
     return;
 end
 
@@ -125,10 +113,8 @@ end
 verbose = int32(5 - nargout);
 rtol = 1.e-6;
 maxit = int32(10000);
-restart = int32(30);
 x0 = cast([], class(b));
 nthreads = int32(1);
-orth = 'MGS';
 
 params_start = nargin;
 for i = next_index+1:nargin
@@ -140,23 +126,15 @@ end
 
 % Process positional arguments
 if params_start > next_index + 1 && ~isempty(varargin{next_index+1})
-    restart = int32(varargin{next_index+1});
-end
-
-if restart > 100
-    m2c_warning('You set restart to %d. It is recommended to maker it no greater than 100.\n', restart);
+    rtol = double(varargin{next_index+1});
 end
 
 if params_start > next_index + 2 && ~isempty(varargin{next_index+2})
-    rtol = double(varargin{next_index+2});
+    maxit = int32(varargin{next_index+2});
 end
 
 if params_start > next_index + 3 && ~isempty(varargin{next_index+3})
-    maxit = int32(varargin{next_index+3});
-end
-
-if params_start > next_index + 4 && ~isempty(varargin{next_index+4})
-    x0 = varargin{next_index+4};
+    x0 = varargin{next_index+3};
 end
 
 % Process argument-value pairs to update arguments
@@ -165,16 +143,12 @@ for i = params_start:2:length(varargin)-1
     switch lower(varargin{i})
         case {'maxit', 'maxiter'}
             maxit = int32(varargin{i+1});
-        case {'restart', 'nrestart'}
-            restart = int32(int32(varargin{i+1}));
         case 'x0'
             x0 = varargin{i+1};
         case {'rtol', 'reltol'}
             rtol = varargin{i+1};
         case {'verb', 'verbose'}
             verbose = int32(varargin{i+1});
-        case 'orth'
-            orth = varargin{i+1};
         case 'nthreads'
             nthreads = int32(varargin{i+1});
         case 'ordering'
@@ -208,21 +182,18 @@ if verbose
     fprintf(1, 'Starting Krylov solver ...\n');
 end
 
-kernel = ['gmresMILU_', orth];
-kernel_func = eval(['@' kernel]);
-
 tic;
-if exist([kernel '.' mexext], 'file')
+if exist(['bicgstabMILU_kernel.' mexext], 'file')
     % Calling MEX function
     ptr = MILU_Dmat(prec(1).ptr, true);
     param = MILU_Dparam(prec(1).param, true);
 
-    [x, flag, iter, resids] = kernel_func(A, b, ptr, ...
-        restart, rtol, maxit, x0, verbose, nthreads, param, ...
+    [x, flag, iter, resids] = bicgstabMILU_kernel(A, b, ptr, ...
+        rtol, maxit, x0, verbose, nthreads, param, ...
         prec(1).rowscal', prec(1).colscal');
 else
-    [x, flag, iter, resids] = kernel_func(A, b, prec, ...
-        restart, rtol, maxit, x0, verbose, nthreads);
+    [x, flag, iter, resids] = bicgstabMILU_kernel(A, b, prec, ...
+        rtol, maxit, x0, verbose, nthreads);
 end
 times(2) = toc;
 
@@ -244,22 +215,12 @@ function test %#ok<DEFNU>
 %! b = s.b;
 %! rtol = 1.e-5;
 %
-%! [x, flag, iter, resids] = gmresMILU(A, b, [], rtol, 100);
+%! [x, flag, iter, resids] = bicgstabMILU(A, b,  rtol, 100);
 %! assert(norm(b - A*x) <= rtol * norm(b))
 %!
 %!test
-%! [x, flag, iter, resids] = gmresMILU(A, b, 'rtol', rtol, ...
-%!         'maxit', 100, 'orth', 'MGS');
-%! assert(norm(b - A*x) <= rtol * norm(b))
-
-%!test
-%! [x, flag, iter, resids] = gmresMILU(A, b, 'rtol', rtol, ...
-%!         'maxit', 100, 'orth', 'CGS');
-%! assert(norm(b - A*x) <= rtol * norm(b))
-
-%!test
-%! [x, flag, iter, resids] = gmresMILU(A, b, 'rtol', rtol, ...
-%!         'maxit', 100, 'orth', 'HO');
+%! [x, flag, iter, resids] = bicgstabMILU(A, b, 'rtol', rtol, ...
+%!         'maxit', 100);
 %! assert(norm(b - A*x) <= rtol * norm(b))
 
 end

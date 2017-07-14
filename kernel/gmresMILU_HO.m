@@ -1,22 +1,30 @@
-function [x, flag, iter, resids] = fgmresMILU_kernel(A, b, ...
+function [x, flag, iter, resids] = gmresMILU_HO(A, b, ...
     prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
-%fgmresMILU_kernel The kernel function of fgmresMILU
+%gmresMILU_HO Kernel of gmresMILU using Householder algorithm
 %
-%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param)
-%   x = fgmresMILU_kernel(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
+%   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
+%     when uncompiled, call this kernel function by passing the prec
+%     struct returned by MILUinit
 %
-%   [x, flag, iter, resids] = fgmresMILU_kernel(...)
+%   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
+%      param, rowscal, colscal) take the opaque pointers for prec and param
+%      and in addition rowscal and colscal in the PREC struct.
 %
-% See also: fgmresMILU
+%   [x, flag, iter, resids] = gmresMILU_HO(...)
+%
+% See also: gmresMILU, gmresMILU_CGS, gmresMILU_MGS
 
-%#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, int32(0), 0.,
-%#codegen int32(0), m2c_vec, int32(0), int32(0), MILU_Dparam, m2c_vec, m2c_vec}
+% Note: The algorithm uses Householder reflectors for orthogonalization.
+% It is more expensive than Gram-Schmidt but is more robust.
+
+%#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, int32(0), 0., int32(0),
+%#codegen m2c_vec, int32(0), int32(0), MILU_Dparam, m2c_vec, m2c_vec}
 
 n = int32(size(b, 1));
 
 % If RHS is zero, terminate
 beta0 = sqrt(vec_sqnorm2(b));
-if (beta0 == 0)
+if beta0 == 0
     x = zeros(n, 1);
     flag = int32(0);
     iter = int32(0);
@@ -41,39 +49,45 @@ else
     x = x0;
 end
 
-% Householder matrix
-y = zeros(restart+1, 1);
-R = zeros(restart, restart);
-J = zeros(2, restart);
-dx = zeros(n, 1);
-Ax = zeros(n, 1);
-
-% Krylov subspace
+% Householder matrix or upper-triangular matix
 V = zeros(n, restart);
+R = zeros(restart, restart);
+
+% Temporary solution
+y = zeros(restart+1, 1);
+
 % Preconditioned subspace
 Z = zeros(n, restart);
 
+% Given's rotation vectors
+J = zeros(2, restart);
+
+% Corrections at outer loop
+dx = zeros(n, 1);
+
+% Buffer spaces
 w = zeros(n, 1);
-% Allocate 3n buffer space for ILUPACK
 dbuff = zeros(3*n, 1);
 
 if nargout > 3
     resids = zeros(maxit, 1);
 end
 
-iter = int32(0);
-resid = 0;
-
 if ~isempty(coder.target)
     t_prec = MILU_Dmat(prec);
     t_param = MILU_Dparam(param);
+    
+    need_rowscaling = any(rowscal ~= 1);
+    need_colscaling = any(colscal ~= 1);    
 end
 
+iter = int32(0);
+resid = 1;
 for it_outer = 1:max_outer_iters
     % Compute the initial residual
-    if (it_outer > 1) || vec_sqnorm2(x) > 0
-        Ax = crs_prodAx(A, x, Ax, nthreads);
-        u = b - Ax;
+    if it_outer > 1 || vec_sqnorm2(x) > 0
+        w = crs_prodAx(A, x, w, nthreads);
+        u = b - w;
     else
         u = b;
     end
@@ -82,7 +96,7 @@ for it_outer = 1:max_outer_iters
     beta = sqrt(beta2);
 
     % Prepare the first Householder vector
-    if (u(1) < 0)
+    if u(1) < 0
         beta = -beta;
     end
     updated_norm = sqrt(2*beta2+2*real(u(1))*beta);
@@ -93,7 +107,7 @@ for it_outer = 1:max_outer_iters
     y(1) = - beta;
     V(:, 1) = u;
 
-    j = int32(1);
+    j = int32(1);    
     while true
         % Construct the last vector from the Householder reflectors
 
@@ -127,12 +141,21 @@ for it_outer = 1:max_outer_iters
         if isempty(coder.target)
             Z(:, j) = ILUsol(prec, v);
         else
-            % We need to perform row-scaling and column scaling.
-            % Refer to DGNLilupacksol.c
-            vscaled = v .* rowscal;
+            % We may need to perform row-scaling and column scaling.
+            % See DGNLilupacksol.c
+            if need_rowscaling 
+                vscaled = v .* rowscal;
+            else
+                vscaled = v;
+            end
             coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
                 coder.rref(vscaled), coder.ref(dx), coder.ref(dbuff));
-            Z(:, j) = dx .* colscal;
+
+            if need_colscaling 
+                Z(:, j) = dx .* colscal;
+            else
+                Z(:, j) = dx;
+            end
         end
         w = crs_prodAx(A, Z(:, j), w, nthreads);
 
@@ -197,17 +220,16 @@ for it_outer = 1:max_outer_iters
         end
 
         %  Compute Given's rotation Jm.
-        if (j ~= length(w))
+        if j < n
             rho = sqrt(w(j)'*w(j)+w(j+1)'*w(j+1));
             J(1, j) = w(j) ./ rho;
             J(2, j) = w(j+1) ./ rho;
             y(j+1) = - J(2, j) .* y(j);
             y(j) = conj(J(1, j)) .* y(j);
             w(j) = rho;
-            w(j+1) = 0;
         end
 
-        R(:, j) = w(1:restart);
+        R(1:j, j) = w(1:j);
 
         resid = abs(y(j+1)) / beta0;
         iter = iter + 1;
@@ -227,20 +249,17 @@ for it_outer = 1:max_outer_iters
         j = j + 1;
     end
 
-    if verbose > 0
+    if verbose == 1
         m2c_printf('At iteration %d, relative residual is %g.\n', iter, resid);
     end
 
-    % Correction
+    % Compute correction vector
     y = backsolve(R, y, j);
-
-    dx = y(j) * Z(:, j);
-    for i = j - 1:-1:1
-        dx = dx + y(i) * Z(:, i);
+    for i = 1:j
+        x = x + y(i) * Z(:, i);
     end
-    x = x + dx;
 
-    if (resid < rtol)
+    if resid < rtol
         break;
     end
 end
@@ -251,7 +270,7 @@ end
 
 if resid > rtol
     % Did not converge after maximum number of iterations
-    flag = int32(3);
+    flag = int32(1);
 else
     flag = int32(0);
 end

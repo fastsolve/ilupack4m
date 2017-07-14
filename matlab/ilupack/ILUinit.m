@@ -1,14 +1,14 @@
-function options = ILUinit(A,options)
+function options = ILUinit(A, options)
 % options = ILUinit(A)
 % options = ILUinit(A,options)
-% 
+%
 % init structure of options to their default values for a given nxn matrix A
-% 
+%
 % input
 % -----
 % A         nxn matrix
 % options   some of the options you might have set in advance, overwritten
-%           on output. In particular setting 'options.isdefinite=1' you 
+%           on output. In particular setting 'options.isdefinite=1' you
 %           indicate that your system is symmetric (Hermitian) positive definite
 %           resulting different initial values
 %
@@ -19,7 +19,7 @@ function options = ILUinit(A,options)
 % ------------------------------------------------------------------------
 %
 % possible options:
-%  1. options.matching 
+%  1. options.matching
 % --------------------
 %    if different from zero then maximum weight matching will be used,
 %    for the real symmetric, complex Hermitian or complex symmetric the
@@ -28,17 +28,17 @@ function options = ILUinit(A,options)
 %    matrix such that it is becomes more diagonally dominant
 %    default value: 1
 %
-%  2. options.ordering 
+%  2. options.ordering
 % --------------------
 %    several reorderings based on |A|+|A|' are offered. Unsymmetric patterns
 %    treated as if they were symmetric.
 %    The orderings are repeated on any coarser level.
-% 
+%
 %    `amd'     default,  Approximate Minimum Degree
 %    `metisn'            METIS multilevel nested dissection by NODES
 %    `metise'            METIS multilevel nested dissection by EDGES
 %    `rcm'               Reverse Cuthill-McKee
-%    `mmd'               Minimum Degree   
+%    `mmd'               Minimum Degree
 %    `amf'               Approximate Minimum Fill
 %    any other           no reordering
 %
@@ -61,13 +61,13 @@ function options = ILUinit(A,options)
 %
 %  6. options.condest
 % -------------------
-%    bound for the inverse triangular factors from the incomplete LU 
+%    bound for the inverse triangular factors from the incomplete LU
 %    decomposition
 %    default: 100
 %
 %  7. options.restol
 % ------------------
-%    bound for the accuracy of the approximate solution of Ax=b for a given 
+%    bound for the accuracy of the approximate solution of Ax=b for a given
 %    right hand side after using ILUPACK-preconditioned iterative solution
 %    This tolerance refers to the BACKWARD ERROR, in the symmetric(Hermitian)
 %    positive definite case to the relative error in the energy norm
@@ -81,7 +81,7 @@ function options = ILUinit(A,options)
 %
 %  9. options.elbow
 % -----------------
-%    elbow space for memory of the ILUPACK multilevel preconditioner. 
+%    elbow space for memory of the ILUPACK multilevel preconditioner.
 %    Since the core part of the code is FORTRAN 77, no dynamic memory
 %    allocation is available, one has to estimate the memory requirement
 %    in advance by multiples of the fill of the initial matrix
@@ -95,7 +95,7 @@ function options = ILUinit(A,options)
 %
 % 11. options.lfilS
 % ----------------
-%    restrict the number of nonzeros per row in the approximate Schur 
+%    restrict the number of nonzeros per row in the approximate Schur
 %    complement hard to at most `lfilS' entries.
 %    default: n+1
 %
@@ -110,10 +110,10 @@ function options = ILUinit(A,options)
 %                      are added to improve the factorization
 %    default:      'none'
 %    alternatives: 'static'         for a fixed test vector
-%                  'function_name'  for a dynamically generated test 
-%                                   vector the user has to provide a 
+%                  'function_name'  for a dynamically generated test
+%                                   vector the user has to provide a
 %                                   custom routine to generate the test
-%                                   vector 
+%                                   vector
 %                                   format:
 %                                   tvd=function_name(mat,tv_old)
 %                                   On every level the associate matrix
@@ -128,7 +128,7 @@ function options = ILUinit(A,options)
 % --------------
 %     static test vector. Ignored if options.typetv=='none'
 %     If options.typetv=='function_name', then on the initial finest level,
-%     options.tv is passed to 'function_name' as initial guess for 'tv_old' 
+%     options.tv is passed to 'function_name' as initial guess for 'tv_old'
 %
 % 14. options.amg
 % ---------------
@@ -136,8 +136,8 @@ function options = ILUinit(A,options)
 %     default:      'ilu'        multilevel ILU
 %     alternatives: 'amli'       multilevel ILU, where on each coarser grid
 %                                an inner iteration is used to solve the
-%                                coarse grid system. The number of inner 
-%                                interation steps is prescribed in 
+%                                coarse grid system. The number of inner
+%                                interation steps is prescribed in
 %                                options.ncoarse
 %                   'mg'         classical multigrid with pre and post
 %                                smoothing
@@ -169,7 +169,7 @@ function options = ILUinit(A,options)
 %                   'function_name' custom routine for smoothing
 %                                   d=function_name(mat,r)
 %                                   Given the matrix 'mat' on each level
-%                                   and the associated residual 
+%                                   and the associated residual
 %                                   'r(=b-mat*x_old)', the custom smoother
 %                                   is asked to compute an approximate defect
 %                                   'd' such that x_new=x_old+d
@@ -184,7 +184,7 @@ function options = ILUinit(A,options)
 %                   'function_name' custom routine for smoothing
 %                                   d=function_name(mat,r)
 %                                   Given the matrix 'mat' on each level
-%                                   and the associated residual 
+%                                   and the associated residual
 %                                   'r(=b-mat*x_old)', the custom smoother
 %                                   is asked to compute an approximate defect
 %                                   'd' such that x_new=x_old+d
@@ -192,7 +192,7 @@ function options = ILUinit(A,options)
 % 20. options.FCpart
 % ------------------
 %     preselect a partitioning into fine grid and coarse grid nodes
-%     default:      'none'          
+%     default:      'none'
 %                   'yes'           if F/C partioning is desired
 %
 % 21. options.typecoarse
@@ -233,10 +233,10 @@ function options = ILUinit(A,options)
 %
 % 27. options.coarsereduce
 % ------------------------
-%     default: 1. If different from zero, then the L21 and the U12 block 
-%     are discarded solving with L,U is done implicitly via L11,U11 and 
+%     default: 1. If different from zero, then the L21 and the U12 block
+%     are discarded solving with L,U is done implicitly via L11,U11 and
 %     A21 (resp. A12). If set to zero, then L21, U12 are kept
-%     
+%
 %
 % 28. options.decoupleconstraints
 % -------------------------------
@@ -265,157 +265,154 @@ function options = ILUinit(A,options)
 %     leaves may reduce the performance of the parallel method
 
 
-n=size(A,1);
+n = size(A, 1);
 
-options.matching=1;
-options.ordering='amd';
-options.droptol =1e-2;
-options.droptolS=1e-2;
-options.droptolc=0;
-options.condest=1e2;
-options.restol=1e-12;
-options.maxit=500;
-options.elbow=10;
-options.lfil =0;
-options.lfilS=0;
-options.typetv='none';
-options.tv=zeros(n,1);
-options.amg='ilu';
-options.npresmoothing=1;
-options.npostsmoothing=1;
-options.ncoarse=1;
-options.presmoother='gsf';
-options.postsmoother='gsb';
-options.FCpart='none';
-options.typecoarse='ilu';
-options.solver='gmres';
-options.damping=1;
-options.contraction=0.5;
-options.nrestart=0;
-options.ind=zeros(n,1);
-options.mixedprecision=0;
-options.coarsereduce=1;
-options.decoupleconstraints=1;
-options.nthreads=1;
-options.loadbalancefactor=2.0;
+options.matching = 1;
+options.ordering = 'amd';
+options.droptol = 1e-2;
+options.droptolS = 1e-2;
+options.droptolc = 0;
+options.condest = 1e2;
+options.restol = 1e-12;
+options.maxit = 500;
+options.elbow = 10;
+options.lfil = 0;
+options.lfilS = 0;
+options.typetv = 'none';
+options.tv = zeros(n, 1);
+options.amg = 'ilu';
+options.npresmoothing = 1;
+options.npostsmoothing = 1;
+options.ncoarse = 1;
+options.presmoother = 'gsf';
+options.postsmoother = 'gsb';
+options.FCpart = 'none';
+options.typecoarse = 'ilu';
+options.solver = 'gmres';
+options.damping = 1;
+options.contraction = 0.5;
+options.nrestart = 0;
+options.ind = zeros(n, 1);
+options.mixedprecision = 0;
+options.coarsereduce = 1;
+options.decoupleconstraints = 1;
+options.nthreads = 1;
+options.loadbalancefactor = 2.0;
 
 
 % make sure that shifted system and A have same type
-if nargin==2
-   if isfield(options,'shiftmatrix')     
-      shiftreal=1;
-      shifthermitian=1;
-      shiftsymmetric=1;
-      
-      if ~isreal(options.shiftmatrix)
-	 shiftreal=0;
-      end  
-      if isfield(options,'shift0')
-	 if ~isreal(options.shift0)
-	    shiftreal=0;
-	 end
-      end
-      if isfield(options,'shiftmax')
-	 if ~isreal(options.shiftmax)
-	    shiftreal=0;
-	 end
-      end
-      if isfield(options,'shifts')
-	 if ~isreal(options.shifts)
-	    shiftreal=0;
-	 end
-      end
-
-      if (norm(options.shiftmatrix-options.shiftmatrix',1)==0)
-	 shifthermitian=1;
-	 % make sure that the shifts are real
-	 if isfield(options,'shift0')
-	    if ~isreal(options.shift0)
-	       shifthermitian=0;
-	    end
-	 end
-	 if isfield(options,'shiftmax')
-	    if ~isreal(options.shiftmax)
-	       shifthermitian=0;
-	    end
-	 end
-	 if isfield(options,'shifts')
-	    if ~isreal(options.shifts)
-	       shifthermitian=0;
-	    end
-	 end
-      else
-	 shifthermitian=0;
-      end
-      if (norm(options.shiftmatrix-options.shiftmatrix.',1)==0)
-	 shiftsymmetric=1;
-      else
-	 shiftsymmetric=0;
-      end
-
-      % A and shift do not match
-      if isreal(A) & ~shiftreal
-	 % A becomes complex hermitian
-	 if norm(A-A',1)==0 & shifthermitian
-	    A(1,2)=A(1,2)+norm(A,1)*eps^2*sqrt(-1);
-	    A(1,2)=A(2,1)';
-	 % A becomes complex symmetric
-	 elseif norm(A-A',1)==0 & shiftsymmetric
-	    A(1,1)=A(1,1)+norm(A,1)*eps^2*sqrt(-1);
-	 % A becomes complex unsymmetric
-	 else
-	    A(1,2)=A(1,2)+norm(A,1)*eps^2*sqrt(-1);
-	 end
-      elseif isreal(A) & shiftreal
-	 % A becomes unsymmetric
-	 if norm(A-A',1)==0 & ~shiftsymmetric
-	    A(1,2)=A(1,2)+norm(A,1)*eps^2;
-	 end
-      elseif ~isreal(A)
-	 % A becomes complex hermitian
-	 if norm(A-A',1)==0 & shifthermitian
-	    % perfect
-	 % A becomes complex symmetric
-	 elseif norm(A-A.',1)==0 & shiftsymmetric
-	    % perfect
-	 % A becomes complex unsymmetric
-	 else
-	    A(1,2)=A(1,2)+norm(A,1)*eps^2*sqrt(-1);
-	 end
-      end
-   end
+if nargin == 2
+    if isfield(options, 'shiftmatrix')
+        shiftreal = 1;
+        
+        if ~isreal(options.shiftmatrix)
+            shiftreal = 0;
+        end
+        if isfield(options, 'shift0')
+            if ~isreal(options.shift0)
+                shiftreal = 0;
+            end
+        end
+        if isfield(options, 'shiftmax')
+            if ~isreal(options.shiftmax)
+                shiftreal = 0;
+            end
+        end
+        if isfield(options, 'shifts')
+            if ~isreal(options.shifts)
+                shiftreal = 0;
+            end
+        end
+        
+        if (norm(options.shiftmatrix-options.shiftmatrix', 1) == 0)
+            shifthermitian = 1;
+            % make sure that the shifts are real
+            if isfield(options, 'shift0')
+                if ~isreal(options.shift0)
+                    shifthermitian = 0;
+                end
+            end
+            if isfield(options, 'shiftmax')
+                if ~isreal(options.shiftmax)
+                    shifthermitian = 0;
+                end
+            end
+            if isfield(options, 'shifts')
+                if ~isreal(options.shifts)
+                    shifthermitian = 0;
+                end
+            end
+        else
+            shifthermitian = 0;
+        end
+        if (norm(options.shiftmatrix-options.shiftmatrix.', 1) == 0)
+            shiftsymmetric = 1;
+        else
+            shiftsymmetric = 0;
+        end
+        
+        % A and shift do not match
+        if isreal(A) && ~shiftreal
+            % A becomes complex hermitian
+            if norm(A-A', 1) == 0 && shifthermitian
+                A(1, 2) = A(1, 2) + norm(A, 1) * eps^2 * sqrt(-1);
+                A(1, 2) = A(2, 1)';
+                % A becomes complex symmetric
+            elseif norm(A-A', 1) == 0 && shiftsymmetric
+                A(1, 1) = A(1, 1) + norm(A, 1) * eps^2 * sqrt(-1);
+                % A becomes complex unsymmetric
+            else
+                A(1, 2) = A(1, 2) + norm(A, 1) * eps^2 * sqrt(-1);
+            end
+        elseif isreal(A) && shiftreal
+            % A becomes unsymmetric
+            if norm(A-A', 1) == 0 && ~shiftsymmetric
+                A(1, 2) = A(1, 2) + norm(A, 1) * eps^2;
+            end
+        elseif ~isreal(A)
+            % A becomes complex hermitian
+            if norm(A-A', 1) == 0 && shifthermitian
+                % perfect
+                % A becomes complex symmetric
+            elseif norm(A-A.', 1) == 0 && shiftsymmetric
+                % perfect
+                % A becomes complex unsymmetric
+            else
+                A(1, 2) = A(1, 2) + norm(A, 1) * eps^2 * sqrt(-1);
+            end
+        end
+    end
 end
 
 
-
 if isreal(A)
-   if norm(A-A',1)==0
-      if isfield(options,'isdefinite')
-	 if options.isdefinite
-	    options=DSPDilupackinit(A,options);
-	 else
-	    options=DSYMilupackinit(A,options);      
-	 end % if-else
-      else
-	 options=DSYMilupackinit(A,options);      
-      end % if
-   else
-      options=DGNLilupackinit(A,options);      
-   end
+    if norm(A-A', 1) == 0
+        if isfield(options, 'isdefinite')
+            if options.isdefinite
+                options = DSPDilupackinit(A, options);
+            else
+                options = DSYMilupackinit(A, options);
+            end % if-else
+        else
+            options = DSYMilupackinit(A, options);
+        end % if
+    else
+        options = DGNLilupackinit(A, options);
+    end
 else
-   if norm(A-A',1)==0
-      if isfield(options,'isdefinite')
-	 if options.isdefinite
-	    options=ZHPDilupackinit(A,options);
-	 else
-	    options=ZHERilupackinit(A,options);      
-	 end % if-else
-      else
-	 options=ZHERilupackinit(A,options);      
-      end % if
-   elseif norm(A-A.',1)==0
-      options=ZSYMilupackinit(A,options);      
-   else
-      options=ZGNLilupackinit(A,options);      
-   end
+    if norm(A-A', 1) == 0
+        if isfield(options, 'isdefinite')
+            if options.isdefinite
+                options = ZHPDilupackinit(A, options);
+            else
+                options = ZHERilupackinit(A, options);
+            end % if-else
+        else
+            options = ZHERilupackinit(A, options);
+        end % if
+    elseif norm(A-A.', 1) == 0
+        options = ZSYMilupackinit(A, options);
+    else
+        options = ZGNLilupackinit(A, options);
+    end
 end % if

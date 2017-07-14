@@ -38,7 +38,7 @@ if nargin >= next_index && ~isempty(varargin{next_index})
     opts = varargin{next_index};
     names = fieldnames(opts);
     for i = 1:length(names)
-        options.(names(i)) = cast(opts.(names(i)), class(options.(names(i))));
+        options.(names{i}) = cast(opts.(names{i}), class(options.(names{i})));
     end
 end
 
