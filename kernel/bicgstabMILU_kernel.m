@@ -51,8 +51,21 @@ if ~isempty(coder.target)
     t_prec = MILU_Dmat(prec);
     t_param = MILU_Dparam(param);
 
-    need_rowscaling = any(rowscal ~= 1);
-    need_colscaling = any(colscal ~= 1);
+    need_rowscaling = false;
+    for i = 1:int32(length(rowscal))
+        if rowscal(i) ~= 1
+            need_rowscaling = true;
+            break;
+        end
+    end
+
+    need_colscaling = false;
+    for i = 1:int32(length(colscal))
+        if colscal(i) ~= 1
+            need_colscaling = true;
+            break;
+        end
+    end
 end
 
 % Compute the initial residual

@@ -3,7 +3,6 @@
 #include "omp.h"
 #include "ilupack.h"
 
-static boolean_T any(const emxArray_boolean_T *x);
 static void b_m2c_error(const emxArray_char_T *varargin_3);
 static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend);
 static void c_m2c_error(void);
@@ -16,28 +15,6 @@ static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
 static void m2c_error(const emxArray_char_T *varargin_3);
 static void m2c_printf(int varargin_2, double varargin_3);
 static void m2c_warn(void);
-static boolean_T any(const emxArray_boolean_T *x)
-{
-  boolean_T y;
-  int ix;
-  boolean_T exitg1;
-  boolean_T b0;
-  y = false;
-  ix = 1;
-  exitg1 = false;
-  while ((!exitg1) && (ix <= x->size[0])) {
-    b0 = !x->data[ix - 1];
-    if (!b0) {
-      y = true;
-      exitg1 = true;
-    } else {
-      ix++;
-    }
-  }
-
-  return y;
-}
-
 static void b_m2c_error(const emxArray_char_T *varargin_3)
 {
   emxArray_char_T *b_varargin_3;
@@ -230,9 +207,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
   static const char cv1[15] = { 'D', 'I', 'L', 'U', 'P', 'A', 'C', 'K', 'p', 'a',
     'r', 'a', 'm', ' ', '*' };
 
-  emxArray_boolean_T *b_rowscal;
   DILUPACKparam * t_param;
-  emxArray_boolean_T *b_colscal;
   double resid;
   int it_outer;
   emxArray_real_T *a;
@@ -471,34 +446,38 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
       data->data[i0] = param->data->data[i0];
     }
 
-    emxInit_boolean_T(&b_rowscal, 1);
     t_param = *(DILUPACKparam **)(&data->data[0]);
-    i0 = b_rowscal->size[0];
-    b_rowscal->size[0] = rowscal->size[0];
-    emxEnsureCapacity((emxArray__common *)b_rowscal, i0, sizeof(boolean_T));
-    loop_ub = rowscal->size[0];
+    need_rowscaling = false;
+    i0 = rowscal->size[0];
+    ii = 1;
     emxFree_uint8_T(&data);
-    for (i0 = 0; i0 < loop_ub; i0++) {
-      b_rowscal->data[i0] = (rowscal->data[i0] != 1.0);
+    exitg1 = false;
+    while ((!exitg1) && (ii <= i0)) {
+      if (rowscal->data[ii - 1] != 1.0) {
+        need_rowscaling = true;
+        exitg1 = true;
+      } else {
+        ii++;
+      }
     }
 
-    emxInit_boolean_T(&b_colscal, 1);
-    need_rowscaling = any(b_rowscal);
-    i0 = b_colscal->size[0];
-    b_colscal->size[0] = colscal->size[0];
-    emxEnsureCapacity((emxArray__common *)b_colscal, i0, sizeof(boolean_T));
-    loop_ub = colscal->size[0];
-    emxFree_boolean_T(&b_rowscal);
-    for (i0 = 0; i0 < loop_ub; i0++) {
-      b_colscal->data[i0] = (colscal->data[i0] != 1.0);
+    need_colscaling = false;
+    i0 = colscal->size[0];
+    ii = 1;
+    exitg1 = false;
+    while ((!exitg1) && (ii <= i0)) {
+      if (colscal->data[ii - 1] != 1.0) {
+        need_colscaling = true;
+        exitg1 = true;
+      } else {
+        ii++;
+      }
     }
 
-    need_colscaling = any(b_colscal);
     *flag = 0;
     *iter = 0;
     resid = 1.0;
     it_outer = 1;
-    emxFree_boolean_T(&b_colscal);
     emxInit_real_T(&a, 2);
     emxInit_real_T(&b_b, 1);
     exitg1 = false;

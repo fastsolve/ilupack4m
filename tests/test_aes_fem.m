@@ -3,7 +3,7 @@ function test_aes_fem
 [~, output] = system('gd-ls -p 0ByTwsK5_Tl_PdDVSWUZzUmxpMWs "Neumann_*_d=[246].mat"');
 
 files = strsplit(output, '\n');
-rtol = 1.e-8;
+rtol = 1.e-12;
 
 for i=1:length(files)
     fname = strtrim(files{i});
