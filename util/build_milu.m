@@ -15,6 +15,8 @@ end
 m2c('-mex', '-omp', '-O2', varargin{:}, ['-I', miluroot, '/include'], ...
     ['-L', LIBDIR], '-lilupack', 'fgmresMILU_HO');
 m2c('-mex', '-omp', '-O2', varargin{:}, ['-I', miluroot, '/include'], ...
-    ['-L', LIBDIR], '-lilupack', 'fgmresMILU_GS');
+    ['-L', LIBDIR], '-lilupack', 'fgmresMILU_MGS');
+m2c('-mex', '-omp', '-O2', varargin{:}, ['-I', miluroot, '/include'], ...
+    ['-L', LIBDIR], '-lilupack', 'fgmresMILU_CGS');
 
 end

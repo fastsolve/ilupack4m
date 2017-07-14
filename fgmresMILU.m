@@ -10,18 +10,23 @@ function [x, flag, iter, resids, times] = fgmresMILU(varargin)
 %
 %    x = fgmresMILU(A, b, restart)
 %    x = fgmresMILU(rowptr, colind, vals, b, restart)
-%    specifies the restart parameter for GMRES. The default value is 30.
-%    You can preserve the default value by passing [].
+%    specifies the number of iterations before GMRES restarts. If restart 
+%    is [], then use the default, 30.
+%
+%    x = fgmresMILU(A, b, restart, rtol)
+%    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol)
+%    specifies the relative tolerance and the maximum number of iterations.
+%    If rtol is [], it will use the default value 1.e-6.
 %
 %    x = fgmresMILU(A, b, restart, rtol, maxit)
 %    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol, maxit)
-%    specifies the relative tolerance and the maximum number of iterations.
-%    Their default values are 1.e-5 and 10000, respectively. Use 0 or [] to
-%    preserve default values of rtol and maxiter.
+%    specifies the maximum number of iterations. If maxit is [], it 
+%    will use the default value 10000. (Note that unlike MATLAB's built-in
+%    gmres, maxit here refers to the total number of iterations.)
 %
 %    x = fgmresMILU(A, b, restart, rtol, maxiter, x0)
 %    x = fgmresMILU(rowptr, colind, vals, b, restart, rtol, maxiter, x0)
-%    takes an initial guess for x in x0. Use 0 or [] to preserve the default
+%    takes an initial guess for x in x0. Use [] to preserve the default
 %    initial solution (all zeros).
 %
 %    x = fgmresMILU(A, b, ..., 'name', value, ...)
@@ -38,16 +43,17 @@ function [x, flag, iter, resids, times] = fgmresMILU(varargin)
 %
 %   'maxiter' [1e5]:  Maximum number of iterations
 %
-%   'x0' [all-zeros]: Initial guess
+%   'x0' [all-zeros]: Initial guess vector
 %
 %   'verb' [5-nargout]:  Verbosity level. 
 %          0 - silent
 %          1 - outer iteration info
 %          2 - inner iteration info
 %
-%   'orth' ['GS']: Orthogonalization strategy. 
-%          'GS' - modified Gauss-Seidel
-%          'HO' - Householder
+%   'orth' ['MGS']: Orthogonalization strategy. 
+%          'CGS' - classical Gram-Schmidt (faster in parallel but less stable)
+%          'MGS' - modified Gram-Schmidt (slower in parallel but more stable)
+%          'HO'  - Householder (slowest but the most stable)
 %
 %   'ordering' ['amd']: Reorderings based on |A|+|A|'.
 %          'amd'    - Approximate Minimum Degree
@@ -76,7 +82,7 @@ function [x, flag, iter, resids, times] = fgmresMILU(varargin)
 %    preconditioner as estimation of maximum number of fills as the 
 %    initial matrix.
 %
-%   'nthreads' [omp_get_num_procs()]: maximal number of threads to use
+%   'nthreads' [1]: maximal number of threads to use
 %
 %    [x, flag] = fgmresMILU(...) returns a convergence flag.
 %    flag: 0 - converged to the desired tolerance TOL within MAXIT iterations.
@@ -117,12 +123,12 @@ end
 
 % Initialize default arguments
 verbose = int32(5 - nargout);
-rtol = 1.e-5;
+rtol = 1.e-6;
 maxit = int32(10000);
 restart = int32(30);
 x0 = cast([], class(b));
-nthreads = ompGetNumProcs;
-Householder = false;
+nthreads = int32(1);
+orth = 'MGS';
 
 params_start = nargin;
 for i = next_index+1:nargin
@@ -168,7 +174,7 @@ for i = params_start:2:length(varargin)-1
         case {'verb', 'verbose'}
             verbose = int32(varargin{i+1});
         case 'orth'
-            Householder = isequal(varargin{i+1}, 'HO');
+            orth = varargin{i+1};
         case 'nthreads'
             nthreads = int32(varargin{i+1});
         case 'ordering'
@@ -202,11 +208,7 @@ if verbose
     fprintf(1, 'Starting Krylov solver ...\n');
 end
 
-if Householder
-    kernel = 'fgmresMILU_HO';
-else
-    kernel = 'fgmresMILU_GS';
-end  
+kernel = ['fgmresMILU_', orth];
 kernel_func = eval(['@' kernel]);
 
 tic;
@@ -242,10 +244,22 @@ function test %#ok<DEFNU>
 %! b = s.b;
 %! rtol = 1.e-5;
 %
-%! [x, flag, iter, resids] = fgmresMILU(A, b, 'rtol', rtol, 'maxit', 100, 'ordering', 'amd');
-%! assert(norm(b - A*x) <= rtol * norm(b))
-%
 %! [x, flag, iter, resids] = fgmresMILU(A, b, [], rtol, 100);
+%! assert(norm(b - A*x) <= rtol * norm(b))
+%!
+%!test
+%! [x, flag, iter, resids] = fgmresMILU(A, b, 'rtol', rtol, ...
+%!         'maxit', 100, 'orth', 'MGS');
+%! assert(norm(b - A*x) <= rtol * norm(b))
+
+%!test
+%! [x, flag, iter, resids] = fgmresMILU(A, b, 'rtol', rtol, ...
+%!         'maxit', 100, 'orth', 'CGS');
+%! assert(norm(b - A*x) <= rtol * norm(b))
+
+%!test
+%! [x, flag, iter, resids] = fgmresMILU(A, b, 'rtol', rtol, ...
+%!         'maxit', 100, 'orth', 'HO');
 %! assert(norm(b - A*x) <= rtol * norm(b))
 
 end

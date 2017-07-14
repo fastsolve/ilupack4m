@@ -1,5 +1,5 @@
-#ifndef FGMRESMILU_GS_TYPES_H
-#define FGMRESMILU_GS_TYPES_H
+#ifndef FGMRESMILU_CGS_TYPES_H
+#define FGMRESMILU_CGS_TYPES_H
 #include "rtwtypes.h"
 #ifndef struct_emxArray__common
 #define struct_emxArray__common
@@ -19,6 +19,27 @@ struct emxArray__common
 #define typedef_emxArray__common
 
 typedef struct emxArray__common emxArray__common;
+
+#endif
+
+#ifndef struct_emxArray_boolean_T
+#define struct_emxArray_boolean_T
+
+struct emxArray_boolean_T
+{
+  boolean_T *data;
+  int *size;
+  int allocatedSize;
+  int numDimensions;
+  boolean_T canFreeData;
+};
+
+#endif
+
+#ifndef typedef_emxArray_boolean_T
+#define typedef_emxArray_boolean_T
+
+typedef struct emxArray_boolean_T emxArray_boolean_T;
 
 #endif
 
