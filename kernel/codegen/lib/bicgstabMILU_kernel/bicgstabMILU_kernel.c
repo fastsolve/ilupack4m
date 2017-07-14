@@ -692,7 +692,12 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
               m2c_printf(*iter, resid);
             }
 
-            if ((resid <= rtol) || (omega == 0.0)) {
+            if (resid <= rtol) {
+              exitg2 = 1;
+            } else if (resid > 100.0) {
+              *flag = -3;
+              exitg2 = 1;
+            } else if (omega == 0.0) {
               exitg2 = 1;
             } else {
               rho_1 = rho;
@@ -711,12 +716,14 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
       i0 = resids->size[0];
       resids->size[0] = *iter;
       emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
-      if (!(resid <= rtol)) {
-        if (omega == 0.0) {
-          *flag = -2;
-        } else if (rho == 0.0) {
-          *flag = -1;
-        } else {
+      if (resid <= rtol) {
+        *flag = 0;
+      } else if (omega == 0.0) {
+        *flag = -2;
+      } else if (rho == 0.0) {
+        *flag = -1;
+      } else {
+        if (*flag == 0) {
           *flag = 1;
         }
       }

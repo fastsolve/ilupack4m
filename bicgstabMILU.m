@@ -15,8 +15,8 @@ function [x, flag, iter, resids, times] = bicgstabMILU(varargin)
 %
 %    x = bicgstabMILU(A, b, rtol, maxit)
 %    x = bicgstabMILU(rowptr, colind, vals, b, rtol, maxit)
-%    specifies the maximum number of iterations. If maxit is [], it 
-%    will use the default value 10000.
+%    specifies the maximum number of iterations. If maxit is [], it
+%    will use the default value 500.
 %
 %    x = bicgstabMILU(A, b, rtol, maxiter, x0)
 %    x = bicgstabMILU(rowptr, colind, vals, b, rtol, maxiter, x0)
@@ -28,16 +28,16 @@ function [x, flag, iter, resids, times] = bicgstabMILU(varargin)
 %    allows omitting none or some of the positional arguments rtol,
 %    maxiter and x0 and specifying these and other parameters in the form
 %    'param1_name', param1_value, 'param2_name', param2_value, and so on.
-%    The parameter names are not case sensitive. Available parameters and 
+%    The parameter names are not case sensitive. Available parameters and
 %    their default values (enclosed by '[' and ']') are as follows:
 %
 %   'rtol' [1.e-6]:   Relative tolerance for converegnce
 %
-%   'maxiter' [1e5]:  Maximum number of iterations
+%   'maxiter' [500]:  Maximum number of iterations
 %
 %   'x0' [all-zeros]: Initial guess vector
 %
-%   'verb' [5-nargout]:  Verbosity level. 
+%   'verb' [1]:  Verbosity level.
 %          0 - silent
 %          1 - iteration info every 30 iterations
 %          2 - iteration info for all iterations
@@ -47,26 +47,26 @@ function [x, flag, iter, resids, times] = bicgstabMILU(varargin)
 %          'metisn' - METIS multilevel nested dissection by NODES
 %          'metise' - METIS multilevel nested dissection by EDGES
 %          'rcm'    - Reverse Cuthill-McKee
-%          'mmd'    - Minimum Degree   
+%          'mmd'    - Minimum Degree
 %          'amf'    - Approximate Minimum Fill
 %          ''       - no reordering
 %
-%   'condest'  [100]: bound for the inverse triangular factors from the ILU
+%   'condest'  [5]: bound for the inverse triangular factors from the ILU
 %
-%   'droptol' [0.01]: threshold for dropping small entries during the 
+%   'droptol' [0.001]: threshold for dropping small entries during the
 %    computation of the ILU factorization
 %
-%   'droptols' [0.01]: threshold for dropping small entries from the 
+%   'droptols' [droptol*0.1]: threshold for dropping small entries from the
 %    Schur complement
 %
-%   'lfil' [inf]: restrict the number of nonzeros per column in L 
+%   'lfil' [unlimited]: restrict the number of nonzeros per column in L
 %    (and respectively per row in U) to at most 'lfil' entries.
 %
-%   'lfils' [inf]: restrict the number of nonzeros per row in the 
+%   'lfils' [unlimited]: restrict the number of nonzeros per row in the
 %    approximate Schur complement to at most 'lfilS' entries.
 %
-%   'elbow' [10]: Elbow space for memory of the ILUPACK multilevel 
-%    preconditioner as estimation of maximum number of fills as the 
+%   'elbow' [10]: Elbow space for memory of the ILUPACK multilevel
+%    preconditioner as estimation of maximum number of fills as the
 %    initial matrix.
 %
 %   'nthreads' [1]: maximal number of threads to use
@@ -76,10 +76,11 @@ function [x, flag, iter, resids, times] = bicgstabMILU(varargin)
 %          1 - no convergence given max_it
 %         -1 - breakdown: rho = 0
 %         -2 - breakdown: omega = 0
+%         -3 - divergence (relative tolerance > 100)
 %
 %    [x, flag, iter] = bicgstabMILU(...) returns the iteration count.
 %
-%    [x, flag, iter, resids] = bicgstabMILU(...) returns the relative 
+%    [x, flag, iter, resids] = bicgstabMILU(...) returns the relative
 %    residual in 2-norm at each iteration.
 %
 %    [x, flag, iter, resids, times] = bicgstabMILU(...) returns the setup
@@ -110,9 +111,9 @@ else
 end
 
 % Initialize default arguments
-verbose = int32(5 - nargout);
+verbose = int32(1);
 rtol = 1.e-6;
-maxit = int32(10000);
+maxit = int32(500);
 x0 = cast([], class(b));
 nthreads = int32(1);
 
@@ -138,7 +139,8 @@ if params_start > next_index + 3 && ~isempty(varargin{next_index+3})
 end
 
 % Process argument-value pairs to update arguments
-options = struct();
+options = struct('ordering', 'amd', 'droptol', 0.001, ...
+    'condest', 5, 'elbow', 10, 'lfil', size(b, 1), 'lfilS', size(b, 1));
 for i = params_start:2:length(varargin)-1
     switch lower(varargin{i})
         case {'maxit', 'maxiter'}
@@ -158,10 +160,14 @@ for i = params_start:2:length(varargin)-1
         case 'droptols'
             options.droptolS = double(varargin{i+1});
         case 'lfils'
-            options.lfilS = double(varargin{i+1});            
+            options.lfilS = double(varargin{i+1});
         otherwise
             error('Unknown tuning parameter "%s"', varargin{i});
     end
+end
+
+if ~isfield(options, 'droptolS')
+    options.droptolS = options.droptol * 0.1;
 end
 
 if verbose
@@ -171,10 +177,17 @@ end
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
-prec = MILUinit(varargin{1:next_index-1}, options);
+[prec, newoptions] = MILUinit(varargin{1:next_index-1}, options);
 times(1) = toc;
 
 if verbose
+    if newoptions.elbow < 1
+        warning('The number of fills is about %.1f%% of original matrix. You may want to decrease droptol to %g.\n', ...
+            newoptions.elbow*100, options.droptol*0.1);
+    else
+        fprintf(1, 'The number of fills is about %.1f%% of original matrix.\n', ...
+            newoptions.elbow*100);
+    end
     fprintf(1, 'Finished ILU factorization in %.1f seconds \n', times(1));
 end
 
@@ -198,7 +211,13 @@ end
 times(2) = toc;
 
 if verbose
-    fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', iter, times(2));
+    if flag == 0
+        fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', iter, times(2));
+    elseif flag == 3
+        fprintf(1, 'BiCGSTAB diverged after %d iterations and %.1f seconds.\n', iter, times(2));
+    else
+        fprintf(1, 'BiCGSTAB failed to converge after %d iterations and %.1f seconds.\n', iter, times(2));
+    end
 end
 
 prec = ILUdelete(prec); %#ok<NASGU>

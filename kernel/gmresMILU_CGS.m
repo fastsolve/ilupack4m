@@ -75,11 +75,12 @@ end
 if ~isempty(coder.target)
     t_prec = MILU_Dmat(prec);
     t_param = MILU_Dparam(param);
-    
+
     need_rowscaling = any(rowscal ~= 1);
-    need_colscaling = any(colscal ~= 1);    
+    need_colscaling = any(colscal ~= 1);
 end
 
+flag = int32(0);
 iter = int32(0);
 resid = 1;
 for it_outer = 1:max_outer_iters
@@ -102,11 +103,11 @@ for it_outer = 1:max_outer_iters
     while true
         % Compute the preconditioned vector and store into v
         if isempty(coder.target)
-            w = ILUsol(prec, Q(:, j));            
+            w = ILUsol(prec, Q(:, j));
         else
             % We need to perform row-scaling and column scaling.
             % See DGNLilupacksol.c
-            if need_rowscaling 
+            if need_rowscaling
                 v = Q(:, j) .* rowscal;
             else
                 v = Q(:, j);
@@ -114,11 +115,11 @@ for it_outer = 1:max_outer_iters
             coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
                 coder.rref(v), coder.ref(w), coder.ref(dbuff));
 
-            if need_colscaling 
+            if need_colscaling
                 w = w .* colscal;
             end
         end
-        
+
         % Store the preconditioned vector
         Z(:, j) = w;
         v = crs_prodAx(A, w, v, nthreads);
@@ -129,7 +130,7 @@ for it_outer = 1:max_outer_iters
             R(k, j) = w' * Q(:, k);
             v = v - R(k, j) * Q(:, k);
         end
-        
+
         vnorm2 = vec_sqnorm2(v);
         vnorm = sqrt(vnorm2);
         if j < restart
@@ -151,7 +152,15 @@ for it_outer = 1:max_outer_iters
         y(j) = conj(J(1, j)) .* y(j);
         R(j, j) = rho;
 
+        resid_prev = resid;
         resid = abs(y(j+1)) / beta0;
+        if resid >= resid_prev * (1 - 1.e-8)
+            flag = int32(3); % stagnated
+            break
+        elseif iter >= maxit
+            flag = int32(1); % reached maxit
+            break
+        end
         iter = iter + 1;
 
         if verbose > 1
@@ -169,7 +178,7 @@ for it_outer = 1:max_outer_iters
         j = j + 1;
     end
 
-    if verbose == 1
+    if verbose == 1 || verbose >1 && flag
         m2c_printf('At iteration %d, relative residual is %g.\n', iter, resid);
     end
 
@@ -179,7 +188,7 @@ for it_outer = 1:max_outer_iters
         x = x + y(i) * Z(:, i);
     end
 
-    if resid < rtol
+    if resid < rtol || flag
         break;
     end
 end
@@ -188,10 +197,7 @@ if nargout > 3
     resids = resids(1:iter);
 end
 
-if resid > rtol
-    % Did not converge after maximum number of iterations
-    flag = int32(1);
-else
+if resid <= rtol * (1 + 1.e-8)
     flag = int32(0);
 end
 
