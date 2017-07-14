@@ -13,11 +13,11 @@ else
 end
 
 m2c('-mex', '-omp', '-O3', varargin{:}, ['-I', miluroot, '/include'], ...
-    ['-L', LIBDIR], '-lilupack', 'fgmresMILU_HO');
+    ['-L', LIBDIR], '-lilupack', 'gmresMILU_HO');
 m2c('-mex', '-omp', '-O3', varargin{:}, ['-I', miluroot, '/include'], ...
-    ['-L', LIBDIR], '-lilupack', 'fgmresMILU_MGS');
+    ['-L', LIBDIR], '-lilupack', 'gmresMILU_MGS');
 m2c('-mex', '-omp', '-O3', varargin{:}, ['-I', miluroot, '/include'], ...
-    ['-L', LIBDIR], '-lilupack', 'fgmresMILU_CGS');
+    ['-L', LIBDIR], '-lilupack', 'gmresMILU_CGS');
 m2c('-mex', '-omp', '-O3', varargin{:}, ['-I', miluroot, '/include'], ...
     ['-L', LIBDIR], '-lilupack', 'bicgstabMILU_kernel');
 

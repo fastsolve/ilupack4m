@@ -89,7 +89,7 @@ while true
     end
     
     % Compute the preconditioned vector and store into v
-    if isempty(coder.target)
+    if isemedpty(coder.target)
         p_hat = ILUsol(prec, p);
     else
         % We need to perform row-scaling and column scaling.

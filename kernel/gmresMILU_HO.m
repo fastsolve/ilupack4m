@@ -1,18 +1,18 @@
-function [x, flag, iter, resids] = fgmresMILU_HO(A, b, ...
+function [x, flag, iter, resids] = gmresMILU_HO(A, b, ...
     prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
-%fgmresMILU_HO Kernel of fgmresMILU using Householder algorithm
+%gmresMILU_HO Kernel of gmresMILU using Householder algorithm
 %
-%   x = fgmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
+%   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
 %     when uncompiled, call this kernel function by passing the prec
 %     struct returned by MILUinit
 %
-%   x = fgmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
+%   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
 %      param, rowscal, colscal) take the opaque pointers for prec and param
 %      and in addition rowscal and colscal in the PREC struct.
 %
-%   [x, flag, iter, resids] = fgmresMILU_HO(...)
+%   [x, flag, iter, resids] = gmresMILU_HO(...)
 %
-% See also: fgmresMILU, fgmresMILU_CGS, fgmresMILU_MGS
+% See also: gmresMILU, gmresMILU_CGS, gmresMILU_MGS
 
 % Note: The algorithm uses Householder reflectors for orthogonalization.
 % It is more expensive than Gram-Schmidt but is more robust.

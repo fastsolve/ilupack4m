@@ -1,21 +1,21 @@
-function [x, flag, iter, resids] = fgmresMILU_CGS(A, b, ...
+function [x, flag, iter, resids] = gmresMILU_MGS(A, b, ...
     prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
-%fgmresMILU_CGS Kernel of fgmresMILU using classical Gram-Schmidt
+%gmresMILU_MGS Kernel of gmresMILU using modified Gram-Schmidt
 %
-%   x = fgmresMILU_CGS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
+%   x = gmresMILU_MGS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
 %     when uncompiled, call this kernel function by passing the prec
 %     struct returned by MILUinit
 %
-%   x = fgmresMILU_CGS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
+%   x = gmresMILU_MGS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
 %      param, rowscal, colscal) take the opaque pointers for prec and param
 %      and in addition rowscal and colscal in the PREC struct.
 %
-%   [x, flag, iter, resids] = fgmresMILU_CGS(...)
+%   [x, flag, iter, resids] = gmresMILU_MGS(...)
 %
-% See also: fgmresMILU, fgmresMILU_MGS, fgmresMILU_HO
+% See also: gmresMILU, gmresMILU_CGS, gmresMILU_HO
 
-% Note: The algorithm uses the classical Gram-Schmidt orthogonalization.
-% It has more parallelism than modified  Gram-Schmidt but is less stable.
+% Note: The algorithm uses the modified Gram-Schmidt orthogonalization.
+% It has less parallelism than classical Gram-Schmidt but is more stable.
 % It is also less stable than the Householder algorithm.
 
 %#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, int32(0), 0., int32(0),
@@ -123,11 +123,10 @@ for it_outer = 1:max_outer_iters
         Z(:, j) = w;
         v = crs_prodAx(A, w, v, nthreads);
 
-        % Perform classical Gram-Schmidt orthogonalization
-        w = v;
+        % Perform Gram-Schmidt orthogonalization and store column of R in w
         for k = 1:j
-            R(k, j) = w' * Q(:, k);
-            v = v - R(k, j) * Q(:, k);
+            w(k) = v' * Q(:, k);
+            v = v - w(k) * Q(:, k);
         end
         
         vnorm2 = vec_sqnorm2(v);
@@ -136,20 +135,21 @@ for it_outer = 1:max_outer_iters
             Q(:, j+1) = v / vnorm;
         end
 
-        %  Apply Given's rotations to R(:,j)
+        %  Apply Given's rotations to w.
         for colJ = 1:j-1
-            tmpv = R(colJ, j);
-            R(colJ, j) = conj(J(1, colJ)) * R(colJ, j) + conj(J(2, colJ)) * R(colJ+1, j);
-            R(colJ+1, j) = - J(2, colJ) * tmpv + J(1, colJ) * R(colJ+1, j);
+            tmpv = w(colJ);
+            w(colJ) = conj(J(1, colJ)) * w(colJ) + conj(J(2, colJ)) * w(colJ+1);
+            w(colJ+1) = - J(2, colJ) * tmpv + J(1, colJ) * w(colJ+1);
         end
 
         %  Compute Given's rotation Jm.
-        rho = sqrt(R(j, j)'*R(j, j)+vnorm2);
-        J(1, j) = R(j, j) ./ rho;
+        rho = sqrt(w(j)'*w(j)+vnorm2);
+        J(1, j) = w(j) ./ rho;
         J(2, j) = vnorm ./ rho;
         y(j+1) = - J(2, j) .* y(j);
         y(j) = conj(J(1, j)) .* y(j);
-        R(j, j) = rho;
+        w(j) = rho;
+        R(1:j, j) = w(1:j);
 
         resid = abs(y(j+1)) / beta0;
         iter = iter + 1;
