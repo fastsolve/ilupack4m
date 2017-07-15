@@ -51,25 +51,17 @@ function [x, flag, iter, resids, times] = bicgstabMILU(varargin)
 %          'amf'    - Approximate Minimum Fill
 %          ''       - no reordering
 %
-%   'condest'  [5]: bound for the inverse triangular factors from the ILU
+%   'condest'  [5]: Bound for the inverse triangular factors from the ILU
+%   Smaller values lead to more levels but potentiall fewer fills. Recommended
+%   value is between 3 and 10.
 %
-%   'droptol' [0.001]: threshold for dropping small entries during the
-%    computation of the ILU factorization
+%   'droptol' [0.001]: Threshold for dropping small entries during the
+%    computation of the ILU factorization.
 %
-%   'droptols' [droptol*0.1]: threshold for dropping small entries from the
-%    Schur complement
+%   'droptols' [droptol*0.1]: Threshold for dropping small entries from the
+%    Schur complement. Recommended value is one order smaller than droptol.
 %
-%   'lfil' [unlimited]: restrict the number of nonzeros per column in L
-%    (and respectively per row in U) to at most 'lfil' entries.
-%
-%   'lfils' [unlimited]: restrict the number of nonzeros per row in the
-%    approximate Schur complement to at most 'lfilS' entries.
-%
-%   'elbow' [10]: Elbow space for memory of the ILUPACK multilevel
-%    preconditioner as estimation of maximum number of fills as the
-%    initial matrix.
-%
-%   'nthreads' [1]: maximal number of threads to use
+%   'nthreads' [1]: Maximal number of threads to use
 %
 %    [x, flag] = bicgstabMILU(...) returns a convergence flag.
 %    flag  0 - solution found to tolerance
@@ -139,8 +131,7 @@ if params_start > next_index + 3 && ~isempty(varargin{next_index+3})
 end
 
 % Process argument-value pairs to update arguments
-options = struct('ordering', 'amd', 'droptol', 0.001, ...
-    'condest', 5, 'elbow', 10, 'lfil', size(b, 1), 'lfilS', size(b, 1));
+options = struct('ordering', 'amd', 'droptol', 0.001, 'condest', 5);
 for i = params_start:2:length(varargin)-1
     switch lower(varargin{i})
         case {'maxit', 'maxiter'}
@@ -155,12 +146,15 @@ for i = params_start:2:length(varargin)-1
             nthreads = int32(varargin{i+1});
         case 'ordering'
             options.ordering = varargin{i+1};
-        case {'droptol', 'condest', 'elbow', 'lfil'}
-            options.(lower(varargin{i})) = double(varargin{i+1});
+        case 'droptol'
+            options.droptol = double(varargin{i+1});
+        case 'condest'
+            options.condest = double(varargin{i+1});
+            if options.condest <= 1 || options.condest >= 20
+                warning('Recommended value for condest is between 3 and 10.\n');
+            end
         case 'droptols'
             options.droptolS = double(varargin{i+1});
-        case 'lfils'
-            options.lfilS = double(varargin{i+1});
         otherwise
             error('Unknown tuning parameter "%s"', varargin{i});
     end
