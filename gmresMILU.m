@@ -10,7 +10,7 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %    x = gmresMILU(A, b, restart)
 %    x = gmresMILU(rowptr, colind, vals, b, restart)
-%    specifies the number of iterations before GMRES restarts. If restart 
+%    specifies the number of iterations before GMRES restarts. If restart
 %    is [], then use the default, 30.
 %
 %    x = gmresMILU(A, b, restart, rtol)
@@ -20,8 +20,8 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %    x = gmresMILU(A, b, restart, rtol, maxit)
 %    x = gmresMILU(rowptr, colind, vals, b, restart, rtol, maxit)
-%    specifies the maximum number of iterations. If maxit is [], it 
-%    will use the default value 10000. (Note that unlike MATLAB's built-in
+%    specifies the maximum number of iterations. If maxit is [], it
+%    will use the default value 500. (Note that unlike MATLAB's built-in
 %    gmres, maxit here refers to the total number of iterations.)
 %
 %    x = gmresMILU(A, b, restart, rtol, maxiter, x0)
@@ -34,23 +34,23 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %    allows omitting none or some of the positional arguments restart, rtol,
 %    maxiter and x0 and specifying these and other parameters in the form
 %    'param1_name', param1_value, 'param2_name', param2_value, and so on.
-%    The parameter names are not case sensitive. Available parameters and 
+%    The parameter names are not case sensitive. Available parameters and
 %    their default values (enclosed by '[' and ']') are as follows:
 %
 %   'restart' [30]:   Number of iterations before restart
 %
 %   'rtol' [1.e-6]:   Relative tolerance for converegnce
 %
-%   'maxiter' [1e5]:  Maximum number of iterations
+%   'maxiter' [500]:  Maximum number of iterations
 %
 %   'x0' [all-zeros]: Initial guess vector
 %
-%   'verb' [5-nargout]:  Verbosity level. 
+%   'verb' [1]:  Verbosity level.
 %          0 - silent
 %          1 - outer iteration info
 %          2 - inner iteration info
 %
-%   'orth' ['MGS']: Orthogonalization strategy. 
+%   'orth' ['MGS']: Orthogonalization strategy.
 %          'CGS' - classical Gram-Schmidt (faster in parallel but less stable)
 %          'MGS' - modified Gram-Schmidt (slower in parallel but more stable)
 %          'HO'  - Householder (slowest but the most stable)
@@ -60,29 +60,21 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %          'metisn' - METIS multilevel nested dissection by NODES
 %          'metise' - METIS multilevel nested dissection by EDGES
 %          'rcm'    - Reverse Cuthill-McKee
-%          'mmd'    - Minimum Degree   
+%          'mmd'    - Minimum Degree
 %          'amf'    - Approximate Minimum Fill
 %          ''       - no reordering
 %
-%   'condest'  [100]: bound for the inverse triangular factors from the ILU
+%   'condest'  [5]: Bound for the inverse triangular factors from the ILU
+%   Smaller values lead to more levels but potentiall fewer fills. Recommended
+%   value is between 3 and 10.
 %
-%   'droptol' [0.01]: threshold for dropping small entries during the 
-%    computation of the ILU factorization
+%   'droptol' [0.001]: Threshold for dropping small entries during the
+%    computation of the ILU factorization.
 %
-%   'droptols' [0.01]: threshold for dropping small entries from the 
-%    Schur complement
+%   'droptols' [droptol*0.1]: Threshold for dropping small entries from the
+%    Schur complement. Recommended value is one order smaller than droptol.
 %
-%   'lfil' [inf]: restrict the number of nonzeros per column in L 
-%    (and respectively per row in U) to at most 'lfil' entries.
-%
-%   'lfils' [inf]: restrict the number of nonzeros per row in the 
-%    approximate Schur complement to at most 'lfilS' entries.
-%
-%   'elbow' [10]: Elbow space for memory of the ILUPACK multilevel 
-%    preconditioner as estimation of maximum number of fills as the 
-%    initial matrix.
-%
-%   'nthreads' [1]: maximal number of threads to use
+%   'nthreads' [1]: Maximal number of threads to use
 %
 %    [x, flag] = gmresMILU(...) returns a convergence flag.
 %    flag: 0 - converged to the desired tolerance TOL within MAXIT iterations.
@@ -91,7 +83,7 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 
 %    [x, flag, iter] = gmresMILU(...) returns the iteration count.
 %
-%    [x, flag, iter, resids] = gmresMILU(...) returns the relative 
+%    [x, flag, iter, resids] = gmresMILU(...) returns the relative
 %    residual in 2-norm at each iteration.
 %
 %    [x, flag, iter, resids, times] = gmresMILU(...) returns the setup
@@ -122,9 +114,9 @@ else
 end
 
 % Initialize default arguments
-verbose = int32(5 - nargout);
+verbose = int32(1);
 rtol = 1.e-6;
-maxit = int32(10000);
+maxit = int32(500);
 restart = int32(30);
 x0 = cast([], class(b));
 nthreads = int32(1);
@@ -160,7 +152,7 @@ if params_start > next_index + 4 && ~isempty(varargin{next_index+4})
 end
 
 % Process argument-value pairs to update arguments
-options = struct();
+options = struct('ordering', 'amd', 'droptol', 0.001, 'condest', 5);
 for i = params_start:2:length(varargin)-1
     switch lower(varargin{i})
         case {'maxit', 'maxiter'}
@@ -179,15 +171,22 @@ for i = params_start:2:length(varargin)-1
             nthreads = int32(varargin{i+1});
         case 'ordering'
             options.ordering = varargin{i+1};
-        case {'droptol', 'condest', 'elbow', 'lfil'}
-            options.(lower(varargin{i})) = double(varargin{i+1});
+        case 'droptol'
+            options.droptol = double(varargin{i+1});
+        case 'condest'
+            options.condest = double(varargin{i+1});
+            if options.condest <= 1 || options.condest >= 20
+                warning('Recommended value for condest is between 3 and 10.\n');
+            end
         case 'droptols'
             options.droptolS = double(varargin{i+1});
-        case 'lfils'
-            options.lfilS = double(varargin{i+1});            
         otherwise
             error('Unknown tuning parameter "%s"', varargin{i});
     end
+end
+
+if ~isfield(options, 'droptolS')
+    options.droptolS = options.droptol * 0.1;
 end
 
 if verbose
@@ -197,10 +196,17 @@ end
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
-prec = MILUinit(varargin{1:next_index-1}, options);
+[prec, newoptions] = MILUinit(varargin{1:next_index-1}, options);
 times(1) = toc;
 
 if verbose
+    if newoptions.elbow < 1
+        warning('Amount of fill is about %.1f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
+            newoptions.elbow*100, options.droptol*0.1);
+    else
+        fprintf(1, 'Amount of fill is about %.1f%% of original nonzeros.\n', ...
+            newoptions.elbow*100);
+    end
     fprintf(1, 'Finished ILU factorization in %.1f seconds \n', times(1));
 end
 
@@ -227,7 +233,13 @@ end
 times(2) = toc;
 
 if verbose
-    fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', iter, times(2));
+    if flag == 0
+        fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', iter, times(2));
+    elseif flag == 3
+        fprintf(1, 'GMRES stagnated after %d iterations and %.1f seconds.\n', iter, times(2));
+    else
+        fprintf(1, 'GMRES failed to converge after %d iterations and %.1f seconds.\n', iter, times(2));
+    end
 end
 
 prec = ILUdelete(prec); %#ok<NASGU>

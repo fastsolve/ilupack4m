@@ -3,8 +3,9 @@
 #include "omp.h"
 #include "ilupack.h"
 
-static boolean_T any(const emxArray_boolean_T *x);
 static void b_m2c_error(const emxArray_char_T *varargin_3);
+static void b_sqrt(double *x);
+static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend);
 static void c_m2c_error(void);
 static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
   *A_col_ind, const emxArray_real_T *A_val, int A_nrows, const emxArray_real_T
@@ -15,28 +16,6 @@ static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
 static void m2c_error(const emxArray_char_T *varargin_3);
 static void m2c_printf(int varargin_2, double varargin_3);
 static void m2c_warn(void);
-static boolean_T any(const emxArray_boolean_T *x)
-{
-  boolean_T y;
-  int ix;
-  boolean_T exitg1;
-  boolean_T b0;
-  y = false;
-  ix = 1;
-  exitg1 = false;
-  while ((!exitg1) && (ix <= x->size[0])) {
-    b0 = !x->data[ix - 1];
-    if (!b0) {
-      y = true;
-      exitg1 = true;
-    } else {
-      ix++;
-    }
-  }
-
-  return y;
-}
-
 static void b_m2c_error(const emxArray_char_T *varargin_3)
 {
   emxArray_char_T *b_varargin_3;
@@ -50,7 +29,7 @@ static void b_m2c_error(const emxArray_char_T *varargin_3)
   i2 = b_varargin_3->size[0] * b_varargin_3->size[1];
   b_varargin_3->size[0] = 1;
   b_varargin_3->size[1] = varargin_3->size[1];
-  emxEnsureCapacity((emxArray__common *)b_varargin_3, i2, sizeof(char));
+  emxEnsureCapacity_char_T(b_varargin_3, i2);
   loop_ub = varargin_3->size[0] * varargin_3->size[1];
   for (i2 = 0; i2 < loop_ub; i2++) {
     b_varargin_3->data[i2] = varargin_3->data[i2];
@@ -58,6 +37,24 @@ static void b_m2c_error(const emxArray_char_T *varargin_3)
 
   M2C_error(msgid, fmt, &b_varargin_3->data[0]);
   emxFree_char_T(&b_varargin_3);
+}
+
+static void b_sqrt(double *x)
+{
+  *x = sqrt(*x);
+}
+
+static void backsolve(const emxArray_real_T *R, emxArray_real_T *bs, int cend)
+{
+  int jj;
+  int ii;
+  for (jj = cend - 1; jj + 1 > 0; jj--) {
+    for (ii = jj + 1; ii + 1 <= cend; ii++) {
+      bs->data[jj] -= R->data[jj + R->size[0] * ii] * bs->data[ii];
+    }
+
+    bs->data[jj] /= R->data[jj + R->size[0] * jj];
+  }
 }
 
 static void c_m2c_error(void)
@@ -155,7 +152,7 @@ static void m2c_error(const emxArray_char_T *varargin_3)
   i1 = b_varargin_3->size[0] * b_varargin_3->size[1];
   b_varargin_3->size[0] = 1;
   b_varargin_3->size[1] = varargin_3->size[1];
-  emxEnsureCapacity((emxArray__common *)b_varargin_3, i1, sizeof(char));
+  emxEnsureCapacity_char_T(b_varargin_3, i1);
   loop_ub = varargin_3->size[0] * varargin_3->size[1];
   for (i1 = 0; i1 < loop_ub; i1++) {
     b_varargin_3->data[i1] = varargin_3->data[i1];
@@ -189,7 +186,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
                    emxArray_real_T *colscal, emxArray_real_T *x, int *flag, int *
                    iter, emxArray_real_T *resids)
 {
-  double resid;
+  double beta2;
   int ii;
   double beta0;
   int i0;
@@ -212,13 +209,11 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
 
   emxArray_uint8_T *data;
   DAMGlevelmat * t_prec;
-  emxArray_char_T *b_param;
   static const char cv1[15] = { 'D', 'I', 'L', 'U', 'P', 'A', 'C', 'K', 'p', 'a',
     'r', 'a', 'm', ' ', '*' };
 
-  emxArray_boolean_T *b_rowscal;
   DILUPACKparam * t_param;
-  emxArray_boolean_T *b_colscal;
+  double resid;
   int it_outer;
   emxArray_real_T *a;
   emxArray_real_T *b_b;
@@ -227,16 +222,16 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
   int exitg2;
   double vnorm;
   double tmpv;
-  resid = 0.0;
+  beta2 = 0.0;
   for (ii = 0; ii + 1 <= b->size[0]; ii++) {
-    resid += b->data[ii] * b->data[ii];
+    beta2 += b->data[ii] * b->data[ii];
   }
 
-  beta0 = sqrt(resid);
+  beta0 = sqrt(beta2);
   if (beta0 == 0.0) {
     i0 = x->size[0];
     x->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
+    emxEnsureCapacity_real_T(x, i0);
     loop_ub = b->size[0];
     for (i0 = 0; i0 < loop_ub; i0++) {
       x->data[i0] = 0.0;
@@ -246,7 +241,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     *iter = 0;
     i0 = resids->size[0];
     resids->size[0] = 1;
-    emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
+    emxEnsureCapacity_real_T(resids, i0);
     resids->data[0] = 0.0;
   } else {
     if (restart > b->size[0]) {
@@ -261,7 +256,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     if (x0->size[0] == 0) {
       i0 = x->size[0];
       x->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
+      emxEnsureCapacity_real_T(x, i0);
       loop_ub = b->size[0];
       for (i0 = 0; i0 < loop_ub; i0++) {
         x->data[i0] = 0.0;
@@ -269,7 +264,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     } else {
       i0 = x->size[0];
       x->size[0] = x0->size[0];
-      emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
+      emxEnsureCapacity_real_T(x, i0);
       loop_ub = x0->size[0];
       for (i0 = 0; i0 < loop_ub; i0++) {
         x->data[i0] = x0->data[i0];
@@ -279,7 +274,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     emxInit_real_T(&y, 1);
     i0 = y->size[0];
     y->size[0] = restart + 1;
-    emxEnsureCapacity((emxArray__common *)y, i0, sizeof(double));
+    emxEnsureCapacity_real_T(y, i0);
     for (i0 = 0; i0 <= restart; i0++) {
       y->data[i0] = 0.0;
     }
@@ -288,7 +283,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     i0 = R->size[0] * R->size[1];
     R->size[0] = restart;
     R->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)R, i0, sizeof(double));
+    emxEnsureCapacity_real_T(R, i0);
     loop_ub = restart * restart;
     for (i0 = 0; i0 < loop_ub; i0++) {
       R->data[i0] = 0.0;
@@ -298,7 +293,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     i0 = Q->size[0] * Q->size[1];
     Q->size[0] = b->size[0];
     Q->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)Q, i0, sizeof(double));
+    emxEnsureCapacity_real_T(Q, i0);
     loop_ub = b->size[0] * restart;
     for (i0 = 0; i0 < loop_ub; i0++) {
       Q->data[i0] = 0.0;
@@ -308,7 +303,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     i0 = Z->size[0] * Z->size[1];
     Z->size[0] = b->size[0];
     Z->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)Z, i0, sizeof(double));
+    emxEnsureCapacity_real_T(Z, i0);
     loop_ub = b->size[0] * restart;
     for (i0 = 0; i0 < loop_ub; i0++) {
       Z->data[i0] = 0.0;
@@ -318,7 +313,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     i0 = J->size[0] * J->size[1];
     J->size[0] = 2;
     J->size[1] = restart;
-    emxEnsureCapacity((emxArray__common *)J, i0, sizeof(double));
+    emxEnsureCapacity_real_T(J, i0);
     loop_ub = restart << 1;
     for (i0 = 0; i0 < loop_ub; i0++) {
       J->data[i0] = 0.0;
@@ -327,7 +322,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     emxInit_real_T(&v, 1);
     i0 = v->size[0];
     v->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+    emxEnsureCapacity_real_T(v, i0);
     loop_ub = b->size[0];
     for (i0 = 0; i0 < loop_ub; i0++) {
       v->data[i0] = 0.0;
@@ -336,7 +331,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     emxInit_real_T(&w, 1);
     i0 = w->size[0];
     w->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)w, i0, sizeof(double));
+    emxEnsureCapacity_real_T(w, i0);
     loop_ub = b->size[0];
     for (i0 = 0; i0 < loop_ub; i0++) {
       w->data[i0] = 0.0;
@@ -346,14 +341,14 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     ii = 3 * b->size[0];
     i0 = dbuff->size[0];
     dbuff->size[0] = ii;
-    emxEnsureCapacity((emxArray__common *)dbuff, i0, sizeof(double));
+    emxEnsureCapacity_real_T(dbuff, i0);
     for (i0 = 0; i0 < ii; i0++) {
       dbuff->data[i0] = 0.0;
     }
 
     i0 = resids->size[0];
     resids->size[0] = maxit;
-    emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
+    emxEnsureCapacity_real_T(resids, i0);
     for (i0 = 0; i0 < maxit; i0++) {
       resids->data[i0] = 0.0;
     }
@@ -381,12 +376,12 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
       need_rowscaling = true;
     }
 
+    emxInit_char_T(&b_prec, 2);
     if (!need_rowscaling) {
-      emxInit_char_T(&b_prec, 2);
       i0 = b_prec->size[0] * b_prec->size[1];
       b_prec->size[0] = 1;
       b_prec->size[1] = prec->type->size[1] + 1;
-      emxEnsureCapacity((emxArray__common *)b_prec, i0, sizeof(char));
+      emxEnsureCapacity_char_T(b_prec, i0);
       loop_ub = prec->type->size[1];
       for (i0 = 0; i0 < loop_ub; i0++) {
         b_prec->data[b_prec->size[0] * i0] = prec->type->data[prec->type->size[0]
@@ -395,13 +390,12 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
 
       b_prec->data[b_prec->size[0] * prec->type->size[1]] = '\x00';
       m2c_error(b_prec);
-      emxFree_char_T(&b_prec);
     }
 
     emxInit_uint8_T(&data, 1);
     i0 = data->size[0];
     data->size[0] = prec->data->size[0];
-    emxEnsureCapacity((emxArray__common *)data, i0, sizeof(unsigned char));
+    emxEnsureCapacity_uint8_T(data, i0);
     loop_ub = prec->data->size[0];
     for (i0 = 0; i0 < loop_ub; i0++) {
       data->data[i0] = prec->data->data[i0];
@@ -432,57 +426,61 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
     }
 
     if (!need_rowscaling) {
-      emxInit_char_T(&b_param, 2);
-      i0 = b_param->size[0] * b_param->size[1];
-      b_param->size[0] = 1;
-      b_param->size[1] = param->type->size[1] + 1;
-      emxEnsureCapacity((emxArray__common *)b_param, i0, sizeof(char));
+      i0 = b_prec->size[0] * b_prec->size[1];
+      b_prec->size[0] = 1;
+      b_prec->size[1] = param->type->size[1] + 1;
+      emxEnsureCapacity_char_T(b_prec, i0);
       loop_ub = param->type->size[1];
       for (i0 = 0; i0 < loop_ub; i0++) {
-        b_param->data[b_param->size[0] * i0] = param->type->data[param->
-          type->size[0] * i0];
+        b_prec->data[b_prec->size[0] * i0] = param->type->data[param->type->
+          size[0] * i0];
       }
 
-      b_param->data[b_param->size[0] * param->type->size[1]] = '\x00';
-      b_m2c_error(b_param);
-      emxFree_char_T(&b_param);
+      b_prec->data[b_prec->size[0] * param->type->size[1]] = '\x00';
+      b_m2c_error(b_prec);
     }
 
+    emxFree_char_T(&b_prec);
     i0 = data->size[0];
     data->size[0] = param->data->size[0];
-    emxEnsureCapacity((emxArray__common *)data, i0, sizeof(unsigned char));
+    emxEnsureCapacity_uint8_T(data, i0);
     loop_ub = param->data->size[0];
     for (i0 = 0; i0 < loop_ub; i0++) {
       data->data[i0] = param->data->data[i0];
     }
 
-    emxInit_boolean_T(&b_rowscal, 1);
     t_param = *(DILUPACKparam **)(&data->data[0]);
-    i0 = b_rowscal->size[0];
-    b_rowscal->size[0] = rowscal->size[0];
-    emxEnsureCapacity((emxArray__common *)b_rowscal, i0, sizeof(boolean_T));
-    loop_ub = rowscal->size[0];
+    need_rowscaling = false;
+    i0 = rowscal->size[0];
+    ii = 1;
     emxFree_uint8_T(&data);
-    for (i0 = 0; i0 < loop_ub; i0++) {
-      b_rowscal->data[i0] = (rowscal->data[i0] != 1.0);
+    exitg1 = false;
+    while ((!exitg1) && (ii <= i0)) {
+      if (rowscal->data[ii - 1] != 1.0) {
+        need_rowscaling = true;
+        exitg1 = true;
+      } else {
+        ii++;
+      }
     }
 
-    emxInit_boolean_T(&b_colscal, 1);
-    need_rowscaling = any(b_rowscal);
-    i0 = b_colscal->size[0];
-    b_colscal->size[0] = colscal->size[0];
-    emxEnsureCapacity((emxArray__common *)b_colscal, i0, sizeof(boolean_T));
-    loop_ub = colscal->size[0];
-    emxFree_boolean_T(&b_rowscal);
-    for (i0 = 0; i0 < loop_ub; i0++) {
-      b_colscal->data[i0] = (colscal->data[i0] != 1.0);
+    need_colscaling = false;
+    i0 = colscal->size[0];
+    ii = 1;
+    exitg1 = false;
+    while ((!exitg1) && (ii <= i0)) {
+      if (colscal->data[ii - 1] != 1.0) {
+        need_colscaling = true;
+        exitg1 = true;
+      } else {
+        ii++;
+      }
     }
 
-    need_colscaling = any(b_colscal);
+    *flag = 0;
     *iter = 0;
     resid = 1.0;
     it_outer = 1;
-    emxFree_boolean_T(&b_colscal);
     emxInit_real_T(&a, 2);
     emxInit_real_T(&b_b, 1);
     exitg1 = false;
@@ -491,17 +489,17 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
       if (it_outer > 1) {
         guard1 = true;
       } else {
-        resid = 0.0;
+        beta2 = 0.0;
         for (ii = 0; ii + 1 <= x->size[0]; ii++) {
-          resid += x->data[ii] * x->data[ii];
+          beta2 += x->data[ii] * x->data[ii];
         }
 
-        if (resid > 0.0) {
+        if (beta2 > 0.0) {
           guard1 = true;
         } else {
           i0 = v->size[0];
           v->size[0] = b->size[0];
-          emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+          emxEnsureCapacity_real_T(v, i0);
           loop_ub = b->size[0];
           for (i0 = 0; i0 < loop_ub; i0++) {
             v->data[i0] = b->data[i0];
@@ -513,23 +511,23 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
         crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, v, nthreads);
         i0 = v->size[0];
         v->size[0] = b->size[0];
-        emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+        emxEnsureCapacity_real_T(v, i0);
         loop_ub = b->size[0];
         for (i0 = 0; i0 < loop_ub; i0++) {
           v->data[i0] = b->data[i0] - v->data[i0];
         }
       }
 
-      resid = 0.0;
+      beta2 = 0.0;
       for (ii = 0; ii + 1 <= v->size[0]; ii++) {
-        resid += v->data[ii] * v->data[ii];
+        beta2 += v->data[ii] * v->data[ii];
       }
 
-      resid = sqrt(resid);
-      y->data[0] = resid;
+      beta2 = sqrt(beta2);
+      y->data[0] = beta2;
       loop_ub = v->size[0];
       for (i0 = 0; i0 < loop_ub; i0++) {
-        Q->data[i0] = v->data[i0] / resid;
+        Q->data[i0] = v->data[i0] / beta2;
       }
 
       j = 0;
@@ -539,7 +537,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
           loop_ub = Q->size[0];
           i0 = v->size[0];
           v->size[0] = loop_ub;
-          emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+          emxEnsureCapacity_real_T(v, i0);
           for (i0 = 0; i0 < loop_ub; i0++) {
             v->data[i0] = Q->data[i0 + Q->size[0] * j] * rowscal->data[i0];
           }
@@ -547,7 +545,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
           loop_ub = Q->size[0];
           i0 = v->size[0];
           v->size[0] = loop_ub;
-          emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+          emxEnsureCapacity_real_T(v, i0);
           for (i0 = 0; i0 < loop_ub; i0++) {
             v->data[i0] = Q->data[i0 + Q->size[0] * j];
           }
@@ -557,7 +555,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
                             &dbuff->data[0]);
         if (need_colscaling) {
           i0 = w->size[0];
-          emxEnsureCapacity((emxArray__common *)w, i0, sizeof(double));
+          emxEnsureCapacity_real_T(w, i0);
           loop_ub = w->size[0];
           for (i0 = 0; i0 < loop_ub; i0++) {
             w->data[i0] *= colscal->data[i0];
@@ -574,7 +572,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
           i0 = a->size[0] * a->size[1];
           a->size[0] = 1;
           a->size[1] = v->size[0];
-          emxEnsureCapacity((emxArray__common *)a, i0, sizeof(double));
+          emxEnsureCapacity_real_T(a, i0);
           loop_ub = v->size[0];
           for (i0 = 0; i0 < loop_ub; i0++) {
             a->data[a->size[0] * i0] = v->data[i0];
@@ -583,7 +581,7 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
           loop_ub = Q->size[0];
           i0 = b_b->size[0];
           b_b->size[0] = loop_ub;
-          emxEnsureCapacity((emxArray__common *)b_b, i0, sizeof(double));
+          emxEnsureCapacity_real_T(b_b, i0);
           for (i0 = 0; i0 < loop_ub; i0++) {
             b_b->data[i0] = Q->data[i0 + Q->size[0] * ii];
           }
@@ -596,36 +594,37 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
             if (i0 == 1) {
               guard1 = true;
             } else {
-              tmpv = 0.0;
+              beta2 = 0.0;
               for (i0 = 0; i0 < a->size[1]; i0++) {
-                tmpv += a->data[a->size[0] * i0] * b_b->data[i0];
+                beta2 += a->data[a->size[0] * i0] * b_b->data[i0];
               }
             }
           }
 
           if (guard1) {
-            tmpv = 0.0;
+            beta2 = 0.0;
             for (i0 = 0; i0 < a->size[1]; i0++) {
-              tmpv += a->data[a->size[0] * i0] * b_b->data[i0];
+              beta2 += a->data[a->size[0] * i0] * b_b->data[i0];
             }
           }
 
-          w->data[ii] = tmpv;
-          resid = w->data[ii];
+          w->data[ii] = beta2;
+          beta2 = w->data[ii];
           i0 = v->size[0];
-          emxEnsureCapacity((emxArray__common *)v, i0, sizeof(double));
+          emxEnsureCapacity_real_T(v, i0);
           loop_ub = v->size[0];
           for (i0 = 0; i0 < loop_ub; i0++) {
-            v->data[i0] -= resid * Q->data[i0 + Q->size[0] * ii];
+            v->data[i0] -= beta2 * Q->data[i0 + Q->size[0] * ii];
           }
         }
 
-        resid = 0.0;
+        beta2 = 0.0;
         for (ii = 0; ii + 1 <= v->size[0]; ii++) {
-          resid += v->data[ii] * v->data[ii];
+          beta2 += v->data[ii] * v->data[ii];
         }
 
-        vnorm = sqrt(resid);
+        vnorm = beta2;
+        b_sqrt(&vnorm);
         if (j + 1 < restart) {
           loop_ub = v->size[0];
           for (i0 = 0; i0 < loop_ub; i0++) {
@@ -641,53 +640,56 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
             [J->size[0] * ii] * w->data[ii + 1];
         }
 
-        resid = sqrt(w->data[j] * w->data[j] + resid);
-        J->data[J->size[0] * j] = w->data[j] / resid;
-        J->data[1 + J->size[0] * j] = vnorm / resid;
+        beta2 += w->data[j] * w->data[j];
+        b_sqrt(&beta2);
+        J->data[J->size[0] * j] = w->data[j] / beta2;
+        J->data[1 + J->size[0] * j] = vnorm / beta2;
         y->data[j + 1] = -J->data[1 + J->size[0] * j] * y->data[j];
         y->data[j] *= J->data[J->size[0] * j];
-        w->data[j] = resid;
+        w->data[j] = beta2;
         for (i0 = 0; i0 <= j; i0++) {
           R->data[i0 + R->size[0] * j] = w->data[i0];
         }
 
+        beta2 = resid;
         resid = fabs(y->data[j + 1]) / beta0;
-        (*iter)++;
-        if (verbose > 1) {
-          m2c_printf(*iter, resid);
-        }
-
-        resids->data[*iter - 1] = resid;
-        if ((resid < rtol) || (j + 1 >= restart)) {
+        if (resid >= beta2 * 0.99999999) {
+          *flag = 3;
+          exitg2 = 1;
+        } else if (*iter >= maxit) {
+          *flag = 1;
           exitg2 = 1;
         } else {
-          j++;
+          (*iter)++;
+          if (verbose > 1) {
+            m2c_printf(*iter, resid);
+          }
+
+          resids->data[*iter - 1] = resid;
+          if ((resid < rtol) || (j + 1 >= restart)) {
+            exitg2 = 1;
+          } else {
+            j++;
+          }
         }
       } while (exitg2 == 0);
 
-      if (verbose == 1) {
+      if ((verbose == 1) || ((verbose > 1) && (*flag != 0))) {
         m2c_printf(*iter, resid);
       }
 
-      for (loop_ub = j; loop_ub + 1 > 0; loop_ub--) {
-        for (ii = loop_ub + 1; ii + 1 <= j + 1; ii++) {
-          y->data[loop_ub] -= R->data[loop_ub + R->size[0] * ii] * y->data[ii];
-        }
-
-        y->data[loop_ub] /= R->data[loop_ub + R->size[0] * loop_ub];
-      }
-
+      backsolve(R, y, j + 1);
       for (ii = 0; ii + 1 <= j + 1; ii++) {
-        tmpv = y->data[ii];
+        beta2 = y->data[ii];
         i0 = x->size[0];
-        emxEnsureCapacity((emxArray__common *)x, i0, sizeof(double));
+        emxEnsureCapacity_real_T(x, i0);
         loop_ub = x->size[0];
         for (i0 = 0; i0 < loop_ub; i0++) {
-          x->data[i0] += tmpv * Z->data[i0 + Z->size[0] * ii];
+          x->data[i0] += beta2 * Z->data[i0 + Z->size[0] * ii];
         }
       }
 
-      if (resid < rtol) {
+      if ((resid < rtol) || (*flag != 0)) {
         exitg1 = true;
       } else {
         it_outer++;
@@ -711,8 +713,10 @@ void gmresMILU_MGS(const struct0_T *A, const emxArray_real_T *b, const struct1_T
       resids->size[0] = *iter;
     }
 
-    emxEnsureCapacity((emxArray__common *)resids, i0, sizeof(double));
-    *flag = (resid > rtol);
+    emxEnsureCapacity_real_T(resids, i0);
+    if (resid <= rtol * 1.00000001) {
+      *flag = 0;
+    }
   }
 }
 

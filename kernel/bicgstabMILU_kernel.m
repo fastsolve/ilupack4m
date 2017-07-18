@@ -50,9 +50,22 @@ end
 if ~isempty(coder.target)
     t_prec = MILU_Dmat(prec);
     t_param = MILU_Dparam(param);
-    
-    need_rowscaling = any(rowscal ~= 1);
-    need_colscaling = any(colscal ~= 1);
+
+    need_rowscaling = false;
+    for i = 1:int32(length(rowscal))
+        if rowscal(i) ~= 1
+            need_rowscaling = true;
+            break;
+        end
+    end
+
+    need_colscaling = false;
+    for i = 1:int32(length(colscal))
+        if colscal(i) ~= 1
+            need_colscaling = true;
+            break;
+        end
+    end
 end
 
 % Compute the initial residual
@@ -66,7 +79,7 @@ end
 resid = sqrt(vec_sqnorm2(r)) / bnrm2;
 if resid < rtol
     resids = 0;
-    return 
+    return
 end
 
 omega = 1.0;
@@ -74,33 +87,34 @@ alpha = 0.0;
 rho_1 = 0.0;
 r_tld = r;
 
+flag = int32(0);
 iter = int32(1);
 while true
     rho = (r_tld' * r); % direction vector
     if rho == 0.0
         break
     end
-    
+
     if iter > 1
         beta = (rho / rho_1) * (alpha / omega);
         p = r + beta * (p - omega * v);
     else
         p = r;
     end
-    
+
     % Compute the preconditioned vector and store into v
     if isempty(coder.target)
         p_hat = ILUsol(prec, p);
     else
         % We need to perform row-scaling and column scaling.
         % See DGNLilupacksol.c
-        if need_rowscaling 
+        if need_rowscaling
             v = p .* rowscal;
         end
         coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
             coder.rref(v), coder.ref(p_hat), coder.ref(dbuff));
 
-        if need_colscaling 
+        if need_colscaling
             p_hat = p_hat .* colscal;
         end
     end
@@ -116,28 +130,28 @@ while true
         resids(iter) = resid;
         break;
     end
-    
+
     % Compute the preconditioned vector and store into v
     if isempty(coder.target)
-        p_hat = ILUsol(prec, s);            
+        p_hat = ILUsol(prec, s);
     else
         % We need to perform row-scaling and column scaling.
         % See DGNLilupacksol.c
-        if need_rowscaling 
+        if need_rowscaling
             v = s .* rowscal;
         end
         coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
             coder.rref(v), coder.ref(p_hat), coder.ref(dbuff));
 
-        if need_colscaling 
+        if need_colscaling
             p_hat = p_hat .* colscal;
         end
     end
-    
+
     v = crs_prodAx(A, p_hat, v, nthreads);
-    omega = (v' * s) / vec_sqnorm2(v);    
+    omega = (v' * s) / vec_sqnorm2(v);
     x = x + omega * p_hat; % update approximation
-    
+
     r = s - omega * v;
     resid = sqrt(vec_sqnorm2(r)) / bnrm2; % check convergence
     resids(iter) = resid;
@@ -148,8 +162,11 @@ while true
 
     if resid <= rtol
         break
+    elseif resid > 100 % diverged
+        flag = int32(-3);
+        break
     end
-    
+
     if omega == 0.0
         break
     end
@@ -171,7 +188,7 @@ elseif omega == 0.0 % breakdown
     flag = int32(-2);
 elseif rho == 0.0
     flag = int32(-1);
-else % no convergence
+elseif flag == 0 % no convergence
     flag = int32(1);
 end
 
