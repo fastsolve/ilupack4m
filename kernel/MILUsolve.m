@@ -54,7 +54,9 @@ for i = (nB + 1):n
 end
 
 if n > nB
-    b(offset + 1:offset + nB) = y1(1:nB);
+    for i = 1:nB
+        b(offset + i) = y1(i);
+    end
 end
 
 if isempty(M(lvl).L.val) && numel(M(lvl).U.val) == n * n
@@ -71,13 +73,20 @@ end
 
 if n > nB
     y2 = crs_Axpy(M(lvl).negE, y1, y2);
-    b(offset + nB + 1:n) = y2(1:n-nB);
+    for i = 1:n-nB
+        b(offset + nB + i) = y2(i);
+    end
+
     [b, y1, y2] = solve_milu(M, lvl+1, b, offset + nB, y1, y2);
-    y2(1:n-nB) = b(offset + nB + 1:n);
 
-    y1(1:nB) = b(offset + 1:offset + nB);
+    for i = 1:nB
+        y1(i) = b(offset + i);
+    end
+    for i = 1:n-nB
+        y2(i) = b(offset + nB + i);
+    end
+
     y1 = crs_Axpy(M(lvl).negF, y2, y1);
-
     y1 = crs_solve_utril(M(lvl).L, y1);
     for i = 1:nB
         y1(i) = y1(i) / M(lvl).d(i);
