@@ -33,9 +33,9 @@ else
 end
 
 % Buffer spaces
-p = zeros(n, 1);
 r = zeros(n, 1);
 v = zeros(n, 1);
+p = zeros(n, 1);
 if ~isempty(coder.target)
     y2 = zeros(M(1).negE.nrows, 1);
 end
@@ -80,14 +80,15 @@ while true
 
     % Compute the preconditioned vector and store into v
     if isempty(coder.target)
-        p = ILUsol(M, p);
+        p_hat = ILUsol(M, p);
     else
-        [p, v, y2] = MILUsolve(M, p, v, y2);
+        p_hat = p;
+        [p_hat, v, y2] = MILUsolve(M, p_hat, v, y2);
     end
 
-    v = crs_prodAx(A, p, v, nthreads);
+    v = crs_prodAx(A, p_hat, v, nthreads);
     alpha = rho / (r_tld' * v);
-    x = x + alpha * p;
+    x = x + alpha * p_hat;
     s = r - alpha * v;
     snrm = sqrt(vec_sqnorm2(s));
 
@@ -99,15 +100,15 @@ while true
 
     % Compute the preconditioned vector and store into v
     if isempty(coder.target)
-        p = ILUsol(M, s);
+        p_hat = ILUsol(M, s);
     else
-        p = s;
-        [p, v, y2] = MILUsolve(M, p, v, y2);
+        p_hat = s;
+        [p_hat, v, y2] = MILUsolve(M, p_hat, v, y2);
     end
 
-    v = crs_prodAx(A, p, v, nthreads);
+    v = crs_prodAx(A, p_hat, v, nthreads);
     omega = (v' * s) / vec_sqnorm2(v);
-    x = x + omega * p; % update approximation
+    x = x + omega * p_hat; % update approximation
 
     r = s - omega * v;
     resid = sqrt(vec_sqnorm2(r)) / bnrm2; % check convergence
