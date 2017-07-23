@@ -116,31 +116,6 @@ function test %#ok<DEFNU>
 %!
 %! [M, ~, prec] = MILUfactor(A, struct('droptol', droptol));
 %!
-%! scaledA = diag(M(1).rowscal)*A*diag(M(1).colscal);
-%! scaledA = scaledA(M(1).p, M(1).q);
-%! 
-%! % assert(max(max(abs(scaledA(1:prec(1).nB, 1:prec(1).nB) - prec(1).L * prec(1).U))) < droptol);
-%! if length(M)==1
-%!     fprintf(1, 'M has one structure.\n');
-%! elseif length(M)==2
-%!     fprintf(1, 'M has two structures.\n');
-%!     B = scaledA(1:prec(1).nB, 1:prec(1).nB);
-%!     E = scaledA(prec(1).nB+1:prec(1).n, 1:prec(1).nB);
-%!     F = scaledA(1:prec(1).nB, prec(1).nB+1:prec(1).n);
-%!     C = scaledA(prec(1).nB+1:prec(1).n, prec(1).nB+1:prec(1).n);
-%!     % assert(max(max(abs(prec(1).E - E))) < droptol);
-%!     % assert(max(max(abs(prec(1).F - F))) < droptol);
-%!     T = [-prec(1).E / prec(1).U / prec(1).L, speye(prec(2).n)] * scaledA * ...
-%!         [-prec(1).U \ prec(1).L \ prec(1).F; speye(prec(2).n)];
-%!     S = C - E * inv(B) * F;
-%!     % assert(max(max(abs(T-S))) < droptol * 50);
-%!     scaledS = diag(prec(2).rowscal) * S * diag(prec(2).colscal);
-%!     q2(prec(2).invq) = 1:prec(2).n;
-%!     if prec(2).n > 1
-%!         % assert(max(max(abs(scaledS(prec(2).p, q2) - prec(2).L * prec(2).U))) < droptol * 50);
-%!     end
-%! end
-%!
 %! x_ref = ILUsol(prec, b);
 %! x = MILUsolve(M, b);
 %! assert(norm(x - x_ref) < 1.e-8);

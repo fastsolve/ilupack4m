@@ -84,3 +84,46 @@ if nargout < 3
 end
 
 end
+
+
+function test %#ok<DEFNU>
+%!test
+%! n = 10;
+%! density = 0.4;
+%! droptol = 0.001;
+%!
+%! for i=1:100
+%!     A = sprand(n, n, density);
+%!     if condest(A) < 1e4
+%!         break;
+%!     end
+%! end
+%! save -v7 random_mat.mat A
+%! b = A * ones(n, 1);
+%!
+%! [M, ~, prec] = MILUfactor(A, struct('droptol', droptol));
+%!
+%! scaledA = diag(M(1).rowscal)*A*diag(M(1).colscal);
+%! scaledA = scaledA(M(1).p, M(1).q);
+%! 
+%! if length(M)==1
+%!     fprintf(1, 'M has one structure.\n');
+%! elseif length(M)==2
+%!     fprintf(1, 'M has two structures.\n');
+%!     B = scaledA(1:prec(1).nB, 1:prec(1).nB);
+%!     E = scaledA(prec(1).nB+1:prec(1).n, 1:prec(1).nB);
+%!     F = scaledA(1:prec(1).nB, prec(1).nB+1:prec(1).n);
+%!     C = scaledA(prec(1).nB+1:prec(1).n, prec(1).nB+1:prec(1).n);
+%!     assert(max(max(abs(prec(1).E - E))) < droptol);
+%!     assert(max(max(abs(prec(1).F - F))) < droptol);
+%!     S = C - E * inv(B) * F;
+%!     scaledS = diag(prec(2).rowscal) * S * diag(prec(2).colscal);
+%!     q2(prec(2).invq) = 1:prec(2).n;
+%!     if prec(2).n > 1
+%!        assert(max(max(abs(scaledS(prec(2).p, q2) - prec(2).L * prec(2).D * prec(2).U))) < droptol * 50);
+%!     end
+%! end
+%!
+%! prec = ILUdelete(prec);
+
+end
