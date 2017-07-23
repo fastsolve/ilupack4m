@@ -171,7 +171,7 @@ end
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
-[prec, newoptions] = MILUinit(varargin{1:next_index-1}, options);
+[~, newoptions, prec] = MILUfactor(varargin{1:next_index-1}, options);
 times(1) = toc;
 
 if verbose

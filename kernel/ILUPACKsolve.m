@@ -1,39 +1,39 @@
-function [x, flag, iter, times] = MILUsolve(varargin)
+function [x, flag, iter, times] = ILUPACKsolve(varargin)
 % Solves a sparse system using GMRES with Multilevel ILU as right preconditioner
 %
 % Syntax:
-%    x = MILUsolve(A, b) solves a sparse linear system using ILUPACK's
+%    x = ILUPACKsolve(A, b) solves a sparse linear system using ILUPACK's
 %    multilevel ILU as the right preconditioner. Matrix A can be in MATLAB's
 %    built-in sparse format or in CRS format created using crs_matrix.
 %
-%    x = MILUsolve(rowptr, colind, vals, b) takes a matrix in the CRS
+%    x = ILUPACKsolve(rowptr, colind, vals, b) takes a matrix in the CRS
 %    format instead of MATLAB's built-in sparse format.
 %
-%    x = MILUsolve(A, b, restart)
-%    x = MILUsolve(rowptr, colind, vals, b, restart)
+%    x = ILUPACKsolve(A, b, restart)
+%    x = ILUPACKsolve(rowptr, colind, vals, b, restart)
 %    allows you to specify the restart parameter for GMRES. The default
 %    value is 30. You can preserve the default value by passing [].
 %
-%    x = MILUsolve(A, b, restart, rtol, maxiter)
-%    x = MILUsolve(rowptr, colind, vals, b, restart, rtol, maxiter)
+%    x = ILUPACKsolve(A, b, restart, rtol, maxiter)
+%    x = ILUPACKsolve(rowptr, colind, vals, b, restart, rtol, maxiter)
 %    allows you to specify the relative tolerance and the maximum number
 %    of iterations. Their default values are 1.e-5 and 10000, respectively.
 %    Use 0 or [] to preserve default values of rtol and maxiter.
 %
-%    x = MILUsolve(A, b, restart, rtol, maxiter, x0)
-%    x = MILUsolve(rowptr, colind, vals, b, restart, rtol, maxiter, x0)
+%    x = ILUPACKsolve(A, b, restart, rtol, maxiter, x0)
+%    x = ILUPACKsolve(rowptr, colind, vals, b, restart, rtol, maxiter, x0)
 %    takes an initial solution in x0. Use 0 or [] to preserve the default
 %    initial solution (all zeros).
 %
-%    x = MILUsolve(A, b, restart, rtol, maxit, x0, opts)
-%    x = MILUsolve(rowptr, colind, vals, b, restart, rtol, maxit, x0, opts)
+%    x = ILUPACKsolve(A, b, restart, rtol, maxit, x0, opts)
+%    x = ILUPACKsolve(rowptr, colind, vals, b, restart, rtol, maxit, x0, opts)
 %    allows you to specify additional options for ILUPACK.
 %
-%    [x, flag, iter, times] = MILUsolve(...) returns the iteration
+%    [x, flag, iter, times] = ILUPACKsolve(...) returns the iteration
 %      counts and runtimes.
 
 if nargin == 0
-    help MILUsolve
+    help ILUPACKsolve
     return;
 end
 
@@ -57,7 +57,7 @@ end
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
-[PREC, options] = MILUinit(varargin{1:next_index-1}, varargin{next_index+5:end});
+[~, options, PREC] = MILUfactor(varargin{1:next_index-1}, varargin{next_index+5:end});
 times(1) = toc;
 
 if nargin >= next_index + 1 && ~isempty(varargin{next_index+1})
@@ -133,11 +133,11 @@ function test %#ok<DEFNU>
 %! b = s.b;
 %! rtol = 1.e-5;
 %
-%! x = MILUsolve(A, b, [], rtol, 100);
+%! x = ILUPACKsolve(A, b, [], rtol, 100);
 %! assert(norm(b - A*x) < rtol * norm(b))
 
 %!test
-%! x = MILUsolve(A, b, 30, rtol, 100);
+%! x = ILUPACKsolve(A, b, 30, rtol, 100);
 %! assert(norm(b - A*x) < rtol * norm(b))
 
 end

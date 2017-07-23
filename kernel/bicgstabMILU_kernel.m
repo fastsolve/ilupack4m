@@ -4,7 +4,7 @@ function [x, flag, iter, resids] = bicgstabMILU_kernel(A, b, ...
 %
 %   x = bicgstabMILU_kernel(A, b, prec, rtol, maxit, x0, verbose, nthreads)
 %     when uncompiled, call this kernel function by passing the prec
-%     struct returned by MILUinit
+%     struct returned by MILUfactor
 %
 %   x = bicgstabMILU_kernel(A, b, prec, rtol, maxit, x0, verbose, nthreads,
 %      param, rowscal, colscal) take the opaque pointers for prec and param

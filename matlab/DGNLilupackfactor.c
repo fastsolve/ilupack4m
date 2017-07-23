@@ -760,7 +760,6 @@ void mexFunction(
     if (jstruct == PRE->nlev - 1 &&
         ((PRE->issingle) ? scurrent->LU.ja : current->LU.ja) == NULL) {
 
-      mexPrintf("Not inverting diagonal entries.\n");
       for (i = 0; i < ((PRE->issingle) ? scurrent->nB : current->nB); i++) {
         /* diagonal entry U(i,i) */
         m = i * ((PRE->issingle) ? scurrent->nB : current->nB) + i;

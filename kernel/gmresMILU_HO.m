@@ -4,7 +4,7 @@ function [x, flag, iter, resids] = gmresMILU_HO(A, b, ...
 %
 %   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
 %     when uncompiled, call this kernel function by passing the prec
-%     struct returned by MILUinit
+%     struct returned by MILUfactor
 %
 %   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
 %      param, rowscal, colscal) take the opaque pointers for prec and param
