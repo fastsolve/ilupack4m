@@ -189,6 +189,11 @@ if ~isfield(options, 'droptolS')
     options.droptolS = options.droptol * 0.1;
 end
 
+kernel = ['gmresMILU_', orth];
+kernel_func = eval(['@' kernel]);
+
+compiled = exist([kernel '.' mexext], 'file');
+
 if verbose
     fprintf(1, 'Performing ILU facotirzation...\n');
 end
@@ -196,7 +201,11 @@ end
 % Perform ILU factorization
 times = zeros(2, 1);
 tic;
-[~, newoptions, prec] = MILUfactor(varargin{1:next_index-1}, options);
+if compiled
+    [M, newoptions] = MILUfactor(varargin{1:next_index-1}, options);
+else
+    [~, newoptions, M] = MILUfactor(varargin{1:next_index-1}, options);
+end
 times(1) = toc;
 
 if verbose
@@ -214,22 +223,9 @@ if verbose
     fprintf(1, 'Starting Krylov solver ...\n');
 end
 
-kernel = ['gmresMILU_', orth];
-kernel_func = eval(['@' kernel]);
-
 tic;
-if exist([kernel '.' mexext], 'file')
-    % Calling MEX function
-    ptr = MILU_Dmat(prec(1).ptr, true);
-    param = MILU_Dparam(prec(1).param, true);
-
-    [x, flag, iter, resids] = kernel_func(A, b, ptr, ...
-        restart, rtol, maxit, x0, verbose, nthreads, param, ...
-        prec(1).rowscal', prec(1).colscal');
-else
-    [x, flag, iter, resids] = kernel_func(A, b, prec, ...
-        restart, rtol, maxit, x0, verbose, nthreads);
-end
+[x, flag, iter, resids] = kernel_func(A, b, M, ...
+    restart, rtol, maxit, x0, verbose, nthreads);
 times(2) = toc;
 
 if verbose
@@ -242,7 +238,9 @@ if verbose
     end
 end
 
-prec = ILUdelete(prec); %#ok<NASGU>
+if ~compiled
+    M = ILUdelete(M); %#ok<NASGU>
+end
 
 end
 

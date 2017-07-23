@@ -12,15 +12,8 @@ function [b, y1, y2] = MILUsolve(M, b, y1, y2)
 %   In the coarsest level, if the matrix is nearly dense, then 
 %   tril(L, -1) + U are stored together as a dense matrix in U.val
 
-%#codegen -args {coder.typeof(struct('p', m2c_intvec, 'q', m2c_intvec,
-%#codegen        'rowscal', m2c_vec, 'colscal', m2c_vec,
-%#codegen       'Lt', crs_matrix, 'Ut', crs_matrix, 'd', m2c_vec,
-%#codegen       'negE', crs_matrix, 'negF', crs_matrix), [inf, 1]), 
-%#codegen       m2c_vec, m2c_vec, m2c_vec}
-%#codegen MILUsolve_2args -args {coder.typeof(struct('p', m2c_intvec, 'q', m2c_intvec,
-%#codegen        'rowscal', m2c_vec, 'colscal', m2c_vec,
-%#codegen       'Lt', crs_matrix, 'Ut', crs_matrix, 'd', m2c_vec,
-%#codegen       'negE', crs_matrix, 'negF', crs_matrix), [inf, 1]), m2c_vec}
+%#codegen -args {MILU_Prec, m2c_vec, m2c_vec, m2c_vec}
+%#codegen MILUsolve_2args -args {MILU_Prec, m2c_vec}
 
 zero = coder.ignoreConst(int32(0));
 one = coder.ignoreConst(int32(1));
