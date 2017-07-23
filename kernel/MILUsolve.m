@@ -14,19 +14,19 @@ function [b, y1, y2] = MILUsolve(M, b, y1, y2)
 
 %#codegen -args {coder.typeof(struct('p', m2c_intvec, 'q', m2c_intvec,
 %#codegen        'rowscal', m2c_vec, 'colscal', m2c_vec,
-%#codegen       'L', crs_matrix, 'U', crs_matrix, 'd', m2c_vec,
+%#codegen       'Lt', crs_matrix, 'Ut', crs_matrix, 'd', m2c_vec,
 %#codegen       'negE', crs_matrix, 'negF', crs_matrix), [inf, 1]), 
 %#codegen       m2c_vec, m2c_vec, m2c_vec}
 %#codegen MILUsolve_2args -args {coder.typeof(struct('p', m2c_intvec, 'q', m2c_intvec,
 %#codegen        'rowscal', m2c_vec, 'colscal', m2c_vec,
-%#codegen       'L', crs_matrix, 'U', crs_matrix, 'd', m2c_vec,
+%#codegen       'Lt', crs_matrix, 'Ut', crs_matrix, 'd', m2c_vec,
 %#codegen       'negE', crs_matrix, 'negF', crs_matrix), [inf, 1]), m2c_vec}
 
 zero = coder.ignoreConst(int32(0));
 one = coder.ignoreConst(int32(1));
 
 if nargin<3
-    y1 = zeros(max(M(1).L.nrows, M(1).negE.nrows), 1);
+    y1 = zeros(max(M(1).Lt.nrows, M(1).negE.nrows), 1);
 end
 if nargin<4
     y2 = zeros(M(1).negE.nrows, 1);
@@ -39,7 +39,7 @@ end
 function [b, y1, y2] = solve_milu(M, lvl, b, offset, y1, y2)
 coder.inline('never');
 
-nB = M(lvl).L.nrows;
+nB = M(lvl).Lt.nrows;
 n = nB + M(lvl).negE.nrows;
 
 % Rescale and permute first block of b
@@ -59,16 +59,16 @@ if n > nB
     end
 end
 
-if isempty(M(lvl).L.val) && numel(M(lvl).U.val) == n * n
-    % L is empty and U is a dense matrix storing result from dgetrf
-    y1 = solve_getrs(M(lvl).U.val, y1, nB);
+if isempty(M(lvl).Lt.val) && numel(M(lvl).Ut.val) == n * n
+    % Lt is empty and Ut is a dense matrix storing result from dgetrf
+    y1 = solve_getrs(M(lvl).Ut.val, y1, nB);
 else
     % It only accesses the first nB entries
-    y1 = crs_solve_utril(M(lvl).L, y1);
+    y1 = crs_solve_utriut(M(lvl).Lt, y1);
     for i = 1:nB
         y1(i) = y1(i) / M(lvl).d(i);
     end
-    y1 = crs_solve_utriu(M(lvl).U, y1);
+    y1 = crs_solve_utrilt(M(lvl).Ut, y1);
 end
 
 if n > nB
@@ -87,11 +87,11 @@ if n > nB
     end
 
     y1 = crs_Axpy(M(lvl).negF, y2, y1);
-    y1 = crs_solve_utril(M(lvl).L, y1);
+    y1 = crs_solve_utriut(M(lvl).Lt, y1);
     for i = 1:nB
         y1(i) = y1(i) / M(lvl).d(i);
     end
-    y1 = crs_solve_utriu(M(lvl).U, y1);
+    y1 = crs_solve_utrilt(M(lvl).Ut, y1);
 end
 
 % Rescale and permute solution vector

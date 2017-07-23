@@ -64,8 +64,8 @@ typedef struct {
   emxArray_int32_T *q;
   emxArray_real_T *rowscal;
   emxArray_real_T *colscal;
-  struct1_T L;
-  struct1_T U;
+  struct1_T Lt;
+  struct1_T Ut;
   emxArray_real_T *d;
   struct1_T negE;
   struct1_T negF;
