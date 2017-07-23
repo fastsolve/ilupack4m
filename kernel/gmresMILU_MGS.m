@@ -1,14 +1,10 @@
 function [x, flag, iter, resids] = gmresMILU_MGS(A, b, ...
-    prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
+    M, restart, rtol, maxit, x0, verbose, nthreads)
 %gmresMILU_MGS Kernel of gmresMILU using modified Gram-Schmidt
 %
-%   x = gmresMILU_MGS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
-%     when uncompiled, call this kernel function by passing the prec
-%     struct returned by MILUinit
-%
-%   x = gmresMILU_MGS(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
-%      param, rowscal, colscal) take the opaque pointers for prec and param
-%      and in addition rowscal and colscal in the PREC struct.
+%   x = gmresMILU_MGS(A, b, M, restart, rtol, maxit, x0, verbose, nthreads)
+%     when uncompiled, call this kernel function by passing the M
+%     struct returned by MILUfactor
 %
 %   [x, flag, iter, resids] = gmresMILU_MGS(...)
 %
@@ -18,8 +14,8 @@ function [x, flag, iter, resids] = gmresMILU_MGS(A, b, ...
 % It has less parallelism than classical Gram-Schmidt but is more stable.
 % It is also less stable than the Householder algorithm.
 
-%#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, int32(0), 0., int32(0),
-%#codegen m2c_vec, int32(0), int32(0), MILU_Dparam, m2c_vec, m2c_vec}
+%#codegen -args {crs_matrix, m2c_vec, MILU_Prec, int32(0), 0., int32(0),
+%#codegen m2c_vec, int32(0), int32(0)}
 
 n = int32(size(b, 1));
 
@@ -65,32 +61,12 @@ J = zeros(2, restart);
 
 % Buffer spaces
 v = zeros(n, 1);
-w = zeros(n, 1);
-dbuff = zeros(3*n, 1);
+if ~isempty(coder.target)
+    y2 = zeros(M(1).negE.nrows, 1);
+end
 
 if nargout > 3
     resids = zeros(maxit, 1);
-end
-
-if ~isempty(coder.target)
-    t_prec = MILU_Dmat(prec);
-    t_param = MILU_Dparam(param);
-
-    need_rowscaling = false;
-    for i = 1:int32(length(rowscal))
-        if rowscal(i) ~= 1
-            need_rowscaling = true;
-            break;
-        end
-    end
-
-    need_colscaling = false;
-    for i = 1:int32(length(colscal))
-        if colscal(i) ~= 1
-            need_colscaling = true;
-            break;
-        end
-    end
 end
 
 flag = int32(0);
@@ -114,23 +90,12 @@ for it_outer = 1:max_outer_iters
 
     j = int32(1);
     while true
+        w = Q(:, j);
         % Compute the preconditioned vector and store into v
         if isempty(coder.target)
-            w = ILUsol(prec, Q(:, j));
+            w = ILUsol(M, w);
         else
-            % We need to perform row-scaling and column scaling.
-            % See DGNLilupacksol.c
-            if need_rowscaling
-                v = Q(:, j) .* rowscal;
-            else
-                v = Q(:, j);
-            end
-            coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
-                coder.rref(v), coder.ref(w), coder.ref(dbuff));
-
-            if need_colscaling
-                w = w .* colscal;
-            end
+            [w, v, y2] = MILUsolve(M, w, v, y2);
         end
 
         % Store the preconditioned vector

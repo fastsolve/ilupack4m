@@ -1,14 +1,10 @@
 function [x, flag, iter, resids] = gmresMILU_HO(A, b, ...
-    prec, restart, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
+    M, restart, rtol, maxit, x0, verbose, nthreads)
 %gmresMILU_HO Kernel of gmresMILU using Householder algorithm
 %
-%   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads)
-%     when uncompiled, call this kernel function by passing the prec
-%     struct returned by MILUinit
-%
-%   x = gmresMILU_HO(A, b, prec, restart, rtol, maxit, x0, verbose, nthreads,
-%      param, rowscal, colscal) take the opaque pointers for prec and param
-%      and in addition rowscal and colscal in the PREC struct.
+%   x = gmresMILU_HO(A, b, M, restart, rtol, maxit, x0, verbose, nthreads)
+%     when uncompiled, call this kernel function by passing the M
+%     struct returned by MILUfactor
 %
 %   [x, flag, iter, resids] = gmresMILU_HO(...)
 %
@@ -17,8 +13,8 @@ function [x, flag, iter, resids] = gmresMILU_HO(A, b, ...
 % Note: The algorithm uses Householder reflectors for orthogonalization.
 % It is more expensive than Gram-Schmidt but is more robust.
 
-%#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, int32(0), 0., int32(0),
-%#codegen m2c_vec, int32(0), int32(0), MILU_Dparam, m2c_vec, m2c_vec}
+%#codegen -args {crs_matrix, m2c_vec, MILU_Prec, int32(0), 0., int32(0),
+%#codegen m2c_vec, int32(0), int32(0)}
 
 n = int32(size(b, 1));
 
@@ -63,35 +59,13 @@ Z = zeros(n, restart);
 J = zeros(2, restart);
 
 % Corrections at outer loop
-dx = zeros(n, 1);
-
-% Buffer spaces
-w = zeros(n, 1);
-dbuff = zeros(3*n, 1);
-
 if nargout > 3
     resids = zeros(maxit, 1);
 end
 
+w = zeros(n, 1);
 if ~isempty(coder.target)
-    t_prec = MILU_Dmat(prec);
-    t_param = MILU_Dparam(param);
-
-    need_rowscaling = false;
-    for i = 1:int32(length(rowscal))
-        if rowscal(i) ~= 1
-            need_rowscaling = true;
-            break;
-        end
-    end
-
-    need_colscaling = false;
-    for i = 1:int32(length(colscal))
-        if colscal(i) ~= 1
-            need_colscaling = true;
-            break;
-        end
-    end
+    y2 = zeros(M(1).negE.nrows, 1);
 end
 
 flag = int32(0);
@@ -153,24 +127,12 @@ for it_outer = 1:max_outer_iters
 
         % Store the preconditioned vector
         if isempty(coder.target)
-            Z(:, j) = ILUsol(prec, v);
+            v = ILUsol(M, v);
         else
-            % We may need to perform row-scaling and column scaling.
-            % See DGNLilupacksol.c
-            if need_rowscaling
-                vscaled = v .* rowscal;
-            else
-                vscaled = v;
-            end
-            coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
-                coder.rref(vscaled), coder.ref(dx), coder.ref(dbuff));
-
-            if need_colscaling
-                Z(:, j) = dx .* colscal;
-            else
-                Z(:, j) = dx;
-            end
+            [v, w, y2] = MILUsolve(M, v, w, y2);
         end
+
+        Z(:, j) = v;
         w = crs_prodAx(A, Z(:, j), w, nthreads);
 
         % Orthogonalize the Krylov vector
@@ -196,7 +158,7 @@ for it_outer = 1:max_outer_iters
         end
 
         % Update the rotators
-        %  Determine Pj+1.
+        % Determine Pj+1.
         if j < n
             %  Construct u for Householder reflector Pj+1.
             u(j) = 0;

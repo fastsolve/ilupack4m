@@ -1,21 +1,17 @@
 function [x, flag, iter, resids] = bicgstabMILU_kernel(A, b, ...
-    prec, rtol, maxit, x0, verbose, nthreads, param, rowscal, colscal)
+    M, rtol, maxit, x0, verbose, nthreads)
 %bicgstabMILU_kernel Kernel of bicgstabMILU
 %
 %   x = bicgstabMILU_kernel(A, b, prec, rtol, maxit, x0, verbose, nthreads)
 %     when uncompiled, call this kernel function by passing the prec
-%     struct returned by MILUinit
-%
-%   x = bicgstabMILU_kernel(A, b, prec, rtol, maxit, x0, verbose, nthreads,
-%      param, rowscal, colscal) take the opaque pointers for prec and param
-%      and in addition rowscal and colscal in the PREC struct.
+%     struct returned by MILUfactor
 %
 %   [x, flag, iter, resids] = bicgstabMILU_kernel(...)
 %
 % See also: bicgstabMILU
 
-%#codegen -args {crs_matrix, m2c_vec, MILU_Dmat, 0., int32(0),
-%#codegen m2c_vec, int32(0), int32(0), MILU_Dparam, m2c_vec, m2c_vec}
+%#codegen -args {crs_matrix, m2c_vec, MILU_Prec, 0., int32(0),
+%#codegen m2c_vec, int32(0), int32(0)}
 
 n = int32(size(b, 1));
 flag = int32(0);
@@ -40,32 +36,12 @@ end
 r = zeros(n, 1);
 v = zeros(n, 1);
 p = zeros(n, 1);
-p_hat = zeros(n, 1);
-dbuff = zeros(3*n, 1);
+if ~isempty(coder.target)
+    y2 = zeros(M(1).negE.nrows, 1);
+end
 
 if nargout > 3
     resids = zeros(maxit, 1);
-end
-
-if ~isempty(coder.target)
-    t_prec = MILU_Dmat(prec);
-    t_param = MILU_Dparam(param);
-
-    need_rowscaling = false;
-    for i = 1:int32(length(rowscal))
-        if rowscal(i) ~= 1
-            need_rowscaling = true;
-            break;
-        end
-    end
-
-    need_colscaling = false;
-    for i = 1:int32(length(colscal))
-        if colscal(i) ~= 1
-            need_colscaling = true;
-            break;
-        end
-    end
 end
 
 % Compute the initial residual
@@ -104,19 +80,10 @@ while true
 
     % Compute the preconditioned vector and store into v
     if isempty(coder.target)
-        p_hat = ILUsol(prec, p);
+        p_hat = ILUsol(M, p);
     else
-        % We need to perform row-scaling and column scaling.
-        % See DGNLilupacksol.c
-        if need_rowscaling
-            v = p .* rowscal;
-        end
-        coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
-            coder.rref(v), coder.ref(p_hat), coder.ref(dbuff));
-
-        if need_colscaling
-            p_hat = p_hat .* colscal;
-        end
+        p_hat = p;
+        [p_hat, v, y2] = MILUsolve(M, p_hat, v, y2);
     end
 
     v = crs_prodAx(A, p_hat, v, nthreads);
@@ -133,19 +100,10 @@ while true
 
     % Compute the preconditioned vector and store into v
     if isempty(coder.target)
-        p_hat = ILUsol(prec, s);
+        p_hat = ILUsol(M, s);
     else
-        % We need to perform row-scaling and column scaling.
-        % See DGNLilupacksol.c
-        if need_rowscaling
-            v = s .* rowscal;
-        end
-        coder.ceval('DGNLAMGsol_internal', t_prec, t_param, ...
-            coder.rref(v), coder.ref(p_hat), coder.ref(dbuff));
-
-        if need_colscaling
-            p_hat = p_hat .* colscal;
-        end
+        p_hat = s;
+        [p_hat, v, y2] = MILUsolve(M, p_hat, v, y2);
     end
 
     v = crs_prodAx(A, p_hat, v, nthreads);
