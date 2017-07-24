@@ -1,7 +1,6 @@
 #ifndef GMRESMILU_HO_TYPES_H
 #define GMRESMILU_HO_TYPES_H
 #include "rtwtypes.h"
-
 #ifndef struct_emxArray_int32_T
 #define struct_emxArray_int32_T
 

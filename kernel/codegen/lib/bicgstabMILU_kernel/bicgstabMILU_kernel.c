@@ -330,7 +330,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
   if (bnrm2 == 0.0) {
     ii = x->size[0];
     x->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
+    emxEnsureCapacity_real_T(x, ii);
     loop_ub = b->size[0];
     for (ii = 0; ii < loop_ub; ii++) {
       x->data[ii] = 0.0;
@@ -338,13 +338,13 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
     ii = resids->size[0];
     resids->size[0] = 1;
-    emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+    emxEnsureCapacity_real_T(resids, ii);
     resids->data[0] = 0.0;
   } else {
     if (x0->size[0] == 0) {
       ii = x->size[0];
       x->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
+      emxEnsureCapacity_real_T(x, ii);
       loop_ub = b->size[0];
       for (ii = 0; ii < loop_ub; ii++) {
         x->data[ii] = 0.0;
@@ -352,7 +352,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     } else {
       ii = x->size[0];
       x->size[0] = x0->size[0];
-      emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
+      emxEnsureCapacity_real_T(x, ii);
       loop_ub = x0->size[0];
       for (ii = 0; ii < loop_ub; ii++) {
         x->data[ii] = x0->data[ii];
@@ -362,7 +362,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     emxInit_real_T(&v, 1);
     ii = v->size[0];
     v->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)v, ii, sizeof(double));
+    emxEnsureCapacity_real_T(v, ii);
     loop_ub = b->size[0];
     for (ii = 0; ii < loop_ub; ii++) {
       v->data[ii] = 0.0;
@@ -371,7 +371,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     emxInit_real_T(&p, 1);
     ii = p->size[0];
     p->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)p, ii, sizeof(double));
+    emxEnsureCapacity_real_T(p, ii);
     loop_ub = b->size[0];
     for (ii = 0; ii < loop_ub; ii++) {
       p->data[ii] = 0.0;
@@ -380,7 +380,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     emxInit_real_T(&y2, 1);
     ii = y2->size[0];
     y2->size[0] = M->data[0].negE.nrows;
-    emxEnsureCapacity((emxArray__common *)y2, ii, sizeof(double));
+    emxEnsureCapacity_real_T(y2, ii);
     loop_ub = M->data[0].negE.nrows;
     for (ii = 0; ii < loop_ub; ii++) {
       y2->data[ii] = 0.0;
@@ -388,7 +388,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
     ii = resids->size[0];
     resids->size[0] = maxit;
-    emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+    emxEnsureCapacity_real_T(resids, ii);
     for (ii = 0; ii < maxit; ii++) {
       resids->data[ii] = 0.0;
     }
@@ -402,7 +402,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     if (resid > 0.0) {
       ii = r->size[0];
       r->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
+      emxEnsureCapacity_real_T(r, ii);
       loop_ub = b->size[0];
       for (ii = 0; ii < loop_ub; ii++) {
         r->data[ii] = 0.0;
@@ -411,7 +411,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
       crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, r, nthreads);
       ii = r->size[0];
       r->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
+      emxEnsureCapacity_real_T(r, ii);
       loop_ub = b->size[0];
       for (ii = 0; ii < loop_ub; ii++) {
         r->data[ii] = b->data[ii] - r->data[ii];
@@ -419,7 +419,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     } else {
       ii = r->size[0];
       r->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
+      emxEnsureCapacity_real_T(r, ii);
       loop_ub = b->size[0];
       for (ii = 0; ii < loop_ub; ii++) {
         r->data[ii] = b->data[ii];
@@ -435,7 +435,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
     if (resid < rtol) {
       ii = resids->size[0];
       resids->size[0] = 1;
-      emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+      emxEnsureCapacity_real_T(resids, ii);
       resids->data[0] = 0.0;
     } else {
       emxInit_real_T(&r_tld, 1);
@@ -444,7 +444,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
       rho_1 = 0.0;
       ii = r_tld->size[0];
       r_tld->size[0] = r->size[0];
-      emxEnsureCapacity((emxArray__common *)r_tld, ii, sizeof(double));
+      emxEnsureCapacity_real_T(r_tld, ii);
       loop_ub = r->size[0];
       for (ii = 0; ii < loop_ub; ii++) {
         r_tld->data[ii] = r->data[ii];
@@ -458,7 +458,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
         ii = a->size[0] * a->size[1];
         a->size[0] = 1;
         a->size[1] = r_tld->size[0];
-        emxEnsureCapacity((emxArray__common *)a, ii, sizeof(double));
+        emxEnsureCapacity_real_T(a, ii);
         loop_ub = r_tld->size[0];
         for (ii = 0; ii < loop_ub; ii++) {
           a->data[a->size[0] * ii] = r_tld->data[ii];
@@ -483,7 +483,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
             resid = rho / rho_1 * (alpha / omega);
             ii = p->size[0];
             p->size[0] = r->size[0];
-            emxEnsureCapacity((emxArray__common *)p, ii, sizeof(double));
+            emxEnsureCapacity_real_T(p, ii);
             loop_ub = r->size[0];
             for (ii = 0; ii < loop_ub; ii++) {
               p->data[ii] = r->data[ii] + resid * (p->data[ii] - omega * v->
@@ -492,7 +492,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
           } else {
             ii = p->size[0];
             p->size[0] = r->size[0];
-            emxEnsureCapacity((emxArray__common *)p, ii, sizeof(double));
+            emxEnsureCapacity_real_T(p, ii);
             loop_ub = r->size[0];
             for (ii = 0; ii < loop_ub; ii++) {
               p->data[ii] = r->data[ii];
@@ -501,7 +501,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
           ii = p_hat->size[0];
           p_hat->size[0] = p->size[0];
-          emxEnsureCapacity((emxArray__common *)p_hat, ii, sizeof(double));
+          emxEnsureCapacity_real_T(p_hat, ii);
           loop_ub = p->size[0];
           for (ii = 0; ii < loop_ub; ii++) {
             p_hat->data[ii] = p->data[ii];
@@ -513,7 +513,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
           ii = a->size[0] * a->size[1];
           a->size[0] = 1;
           a->size[1] = r_tld->size[0];
-          emxEnsureCapacity((emxArray__common *)a, ii, sizeof(double));
+          emxEnsureCapacity_real_T(a, ii);
           loop_ub = r_tld->size[0];
           for (ii = 0; ii < loop_ub; ii++) {
             a->data[a->size[0] * ii] = r_tld->data[ii];
@@ -533,14 +533,14 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
           alpha = rho / rho_1;
           ii = x->size[0];
-          emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
+          emxEnsureCapacity_real_T(x, ii);
           loop_ub = x->size[0];
           for (ii = 0; ii < loop_ub; ii++) {
             x->data[ii] += alpha * p_hat->data[ii];
           }
 
           ii = r->size[0];
-          emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
+          emxEnsureCapacity_real_T(r, ii);
           loop_ub = r->size[0];
           for (ii = 0; ii < loop_ub; ii++) {
             r->data[ii] -= alpha * v->data[ii];
@@ -559,7 +559,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
           } else {
             ii = p_hat->size[0];
             p_hat->size[0] = r->size[0];
-            emxEnsureCapacity((emxArray__common *)p_hat, ii, sizeof(double));
+            emxEnsureCapacity_real_T(p_hat, ii);
             loop_ub = r->size[0];
             for (ii = 0; ii < loop_ub; ii++) {
               p_hat->data[ii] = r->data[ii];
@@ -571,7 +571,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
             ii = a->size[0] * a->size[1];
             a->size[0] = 1;
             a->size[1] = v->size[0];
-            emxEnsureCapacity((emxArray__common *)a, ii, sizeof(double));
+            emxEnsureCapacity_real_T(a, ii);
             loop_ub = v->size[0];
             for (ii = 0; ii < loop_ub; ii++) {
               a->data[a->size[0] * ii] = v->data[ii];
@@ -596,14 +596,14 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
 
             omega = rho_1 / resid;
             ii = x->size[0];
-            emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
+            emxEnsureCapacity_real_T(x, ii);
             loop_ub = x->size[0];
             for (ii = 0; ii < loop_ub; ii++) {
               x->data[ii] += omega * p_hat->data[ii];
             }
 
             ii = r->size[0];
-            emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
+            emxEnsureCapacity_real_T(r, ii);
             loop_ub = r->size[0];
             for (ii = 0; ii < loop_ub; ii++) {
               r->data[ii] -= omega * v->data[ii];
@@ -645,7 +645,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
       emxFree_real_T(&r_tld);
       ii = resids->size[0];
       resids->size[0] = *iter;
-      emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+      emxEnsureCapacity_real_T(resids, ii);
       if (resid <= rtol) {
         *flag = 0;
       } else if (omega == 0.0) {
