@@ -47,12 +47,25 @@ typedef struct emxArray_real_T emxArray_real_T;
 #define typedef_struct1_T
 
 typedef struct {
+  emxArray_int32_T *col_ptr;
+  emxArray_int32_T *row_ind;
+  emxArray_real_T *val;
+  int nrows;
+  int ncols;
+} struct1_T;
+
+#endif
+
+#ifndef typedef_struct2_T
+#define typedef_struct2_T
+
+typedef struct {
   emxArray_int32_T *row_ptr;
   emxArray_int32_T *col_ind;
   emxArray_real_T *val;
   int nrows;
   int ncols;
-} struct1_T;
+} struct2_T;
 
 #endif
 
@@ -64,11 +77,11 @@ typedef struct {
   emxArray_int32_T *q;
   emxArray_real_T *rowscal;
   emxArray_real_T *colscal;
-  struct1_T Lt;
-  struct1_T Ut;
+  struct1_T L;
+  struct1_T U;
   emxArray_real_T *d;
-  struct1_T negE;
-  struct1_T negF;
+  struct2_T negE;
+  struct2_T negF;
 } struct0_T;
 
 #endif
