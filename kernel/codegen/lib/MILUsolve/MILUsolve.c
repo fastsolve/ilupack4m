@@ -189,7 +189,7 @@ void MILUsolve_2args(const emxArray_struct0_T *M, emxArray_real_T *b)
   emxInit_real_T(&b_y1, 1);
   i0 = b_y1->size[0];
   b_y1->size[0] = u1;
-  emxEnsureCapacity_real_T(b_y1, i0);
+  emxEnsureCapacity((emxArray__common *)b_y1, i0, sizeof(double));
   for (i0 = 0; i0 < u1; i0++) {
     b_y1->data[i0] = 0.0;
   }
@@ -197,7 +197,7 @@ void MILUsolve_2args(const emxArray_struct0_T *M, emxArray_real_T *b)
   emxInit_real_T(&y2, 1);
   i0 = y2->size[0];
   y2->size[0] = M->data[0].negE.nrows;
-  emxEnsureCapacity_real_T(y2, i0);
+  emxEnsureCapacity((emxArray__common *)y2, i0, sizeof(double));
   u0 = M->data[0].negE.nrows;
   for (i0 = 0; i0 < u0; i0++) {
     y2->data[i0] = 0.0;

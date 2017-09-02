@@ -1,0 +1,124 @@
+function [b, y] = MILUsolve(M, b, y)
+%MILUsolve computes M\b, where M is the preconditioner
+%   b = MILUsolve(M, b)
+%   M is a structure containing the multilevel ILU factorization of A.
+%
+%   [b, y] = MILUsolve(M, b, y)
+%   where y is buffer space of size n-by-1.
+%
+%   At each level of M, LDU is equal to the nB-b-nB leadng block of
+%     P * diag(rowscal) * A * diag(colcale) * Q
+%   where both L and D are unit diagonal. In the coarsest level, 
+%   if the matrix is nearly dense, then U stores the dense LU factorization.
+
+%#codegen -args {MILU_Prec, m2c_vec, m2c_vec}
+%#codegen MILUsolve_2args -args {MILU_Prec, m2c_vec}
+
+zero = coder.ignoreConst(int32(0));
+one = coder.ignoreConst(int32(1));
+
+if nargin<3
+    n = M(1).Lt.nrows + M(1).negE.nrows;
+    y = zeros(n, 1);
+end
+
+[b, y] = solve_milu(M, one, b, zero, y);
+
+end
+
+function [b, y] = solve_milu(M, lvl, b, offset, y)
+coder.inline('never');
+
+nB = M(lvl).Lt.nrows;
+n = nB + M(lvl).negE.nrows;
+
+% Rescale and permute b
+for i = 1:n
+    k = M(lvl).p(i);
+    y(offset + i) = M(lvl).rowscal(k) .* b(offset + k);
+end
+
+if n > nB
+    % Back up b
+    for i = 1:nB
+        b(offset + i) = y(offset + i);
+    end
+end
+
+if isempty(M(lvl).Lt.val) && numel(M(lvl).Ut.val) == n * n
+    % Lt is empty and Ut is a dense matrix storing result from dgetrf
+    y = solve_getrs(M(lvl).Ut.val, y, nB, offset);
+else
+    y = crs_solve_utriut(M(lvl).Lt, y, offset);
+    for i = 1:nB
+        y(offset + i) = y(offset + i) / M(lvl).d(i);
+    end
+    y = crs_solve_utrilt(M(lvl).Ut, y, offset);
+end
+
+if n > nB
+    b = crs_Axpy(M(lvl).negE, y, offset, y, offset + nB);
+    [b, y] = solve_milu(M, lvl+1, b, offset + nB, y);
+
+    y = crs_Axpy(M(lvl).negF, b, offset+nB, b, offset);
+    y = crs_solve_utriut(M(lvl).Lt, y, offset);
+    for i = 1:nB
+        y(offset + i) = y(offset + i) / M(lvl).d(i);
+    end
+    y = crs_solve_utrilt(M(lvl).Ut, y, offset);
+end
+
+% Rescale and permute solution vector
+for i = 1:n
+    k = M(lvl).q(i);
+    b(offset + k) = y(offset + i) * M(lvl).colscal(k);
+end
+
+end
+
+function test %#ok<DEFNU>
+%!test
+%! n = 10;
+%! density = 0.4;
+%! droptol = 0.001;
+%!
+%! for i=1:100
+%!     A = sprand(n, n, density);
+%!     if condest(A) < 1e4
+%!         break;
+%!     end
+%! end
+%! save -v7 random_mat.mat A
+%! b = A * ones(n, 1);
+%!
+%! [M, ~, prec] = MILUfactor(A, struct('droptol', droptol));
+%!
+%! x_ref = ILUsol(prec, b);
+%! x = MILUsolve(M, b);
+%! assert(norm(x - x_ref) < 1.e-8);
+%! prec = ILUdelete(prec);
+
+%!test
+%!shared A, b, rtol
+%! system('gd-get -O -p 0ByTwsK5_Tl_PemN0QVlYem11Y00 fem2d"*".mat');
+%! s = load('fem2d_cd.mat');
+%! A = s.A;
+%! s = load('fem2d_vec_cd.mat');
+%! b = s.b;
+%!
+%! fprintf('Computing ILU factorization...'); tic;
+%! [M, ~, prec] = MILUfactor(A, struct('droptol', 0.001));
+%! fprintf('Done in %g seconds\n', toc);
+%!
+%! fprintf('Calling ILUsol...'); tic;
+%! x_ref = ILUsol(prec, b);
+%! fprintf('Done in %g seconds\n', toc);
+
+%! fprintf('Calling MILUsolve...'); tic;
+%! x = MILUsolve(M, b);
+%! fprintf('Done in %g seconds\n', toc);
+
+%! assert(norm(x - x_ref, inf) < 1.e-8);
+%! prec = ILUdelete(prec);
+
+end

@@ -1,6 +1,7 @@
 #ifndef GMRESMILU_CGS_TYPES_H
 #define GMRESMILU_CGS_TYPES_H
 #include "rtwtypes.h"
+
 #ifndef struct_emxArray_int32_T
 #define struct_emxArray_int32_T
 
@@ -56,6 +57,19 @@ typedef struct {
 
 #endif
 
+#ifndef typedef_struct2_T
+#define typedef_struct2_T
+
+typedef struct {
+  emxArray_int32_T *col_ptr;
+  emxArray_int32_T *row_ind;
+  emxArray_real_T *val;
+  int nrows;
+  int ncols;
+} struct2_T;
+
+#endif
+
 #ifndef typedef_struct1_T
 #define typedef_struct1_T
 
@@ -64,8 +78,8 @@ typedef struct {
   emxArray_int32_T *q;
   emxArray_real_T *rowscal;
   emxArray_real_T *colscal;
-  struct0_T Lt;
-  struct0_T Ut;
+  struct2_T L;
+  struct2_T U;
   emxArray_real_T *d;
   struct0_T negE;
   struct0_T negF;
