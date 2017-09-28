@@ -8,7 +8,7 @@ before_install:
   - sudo add-apt-repository -y ppa:octave/stable
   - sudo apt-get update -q
   - sudo apt-get install -y octave liboctave-dev bsdtar realpath
-  - pip install requests progressbar2
+  - sudo pip install requests progressbar2
 # Install gdutil
   - sudo git clone --depth 1 https://github.com/hpdata/gdutil /usr/local/gdutil
   - sudo pip install -r /usr/local/gdutil/requirements.txt
