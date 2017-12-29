@@ -111,6 +111,97 @@ static void destroy_struct0_T(struct0_T *pStruct) {
 }
 
 
+static void marshallin_const_struct2_T(struct2_T *pStruct, const mxArray *mx, const char *mname) {
+    mxArray             *sub_mx;
+
+    if (!mxIsStruct(mx))
+        M2C_error("marshallin_const_struct2_T:WrongType",
+            "Input argument %s has incorrect data type; struct is expected.", mname);
+    if (!mxGetField(mx, 0, "col_ptr"))
+        M2C_error("marshallin_const_struct2_T:WrongType",
+            "Input argument %s is missing the field col_ptr.", mname);
+    if (!mxGetField(mx, 0, "row_ind"))
+        M2C_error("marshallin_const_struct2_T:WrongType",
+            "Input argument %s is missing the field row_ind.", mname);
+    if (!mxGetField(mx, 0, "val"))
+        M2C_error("marshallin_const_struct2_T:WrongType",
+            "Input argument %s is missing the field val.", mname);
+    if (!mxGetField(mx, 0, "nrows"))
+        M2C_error("marshallin_const_struct2_T:WrongType",
+            "Input argument %s is missing the field nrows.", mname);
+    if (!mxGetField(mx, 0, "ncols"))
+        M2C_error("marshallin_const_struct2_T:WrongType",
+            "Input argument %s is missing the field ncols.", mname);
+    if (mxGetNumberOfFields(mx) > 5)
+        M2C_warn("marshallin_const_struct2_T:ExtraFields",
+            "Extra fields in %s and are ignored.", mname);
+
+    sub_mx = mxGetField(mx, 0, "col_ptr");
+    if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxINT32_CLASS)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongInputType",
+            "Input argument col_ptr has incorrect data type; int32 is expected.");
+    if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
+            "Dimension 2 of col_ptr should equal 1.");
+    pStruct->col_ptr = mxMalloc(sizeof(emxArray_int32_T));
+    init_emxArray((emxArray__common*)(pStruct->col_ptr), 1);
+    alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->col_ptr), "col_ptr", 1);
+
+    sub_mx = mxGetField(mx, 0, "row_ind");
+    if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxINT32_CLASS)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongInputType",
+            "Input argument row_ind has incorrect data type; int32 is expected.");
+    if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
+            "Dimension 2 of row_ind should equal 1.");
+    pStruct->row_ind = mxMalloc(sizeof(emxArray_int32_T));
+    init_emxArray((emxArray__common*)(pStruct->row_ind), 1);
+    alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->row_ind), "row_ind", 1);
+
+    sub_mx = mxGetField(mx, 0, "val");
+    if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxDOUBLE_CLASS)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongInputType",
+            "Input argument val has incorrect data type; double is expected.");
+    if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
+            "Dimension 2 of val should equal 1.");
+    pStruct->val = mxMalloc(sizeof(emxArray_real_T));
+    init_emxArray((emxArray__common*)(pStruct->val), 1);
+    alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->val), "val", 1);
+
+    sub_mx = mxGetField(mx, 0, "nrows");
+    if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxINT32_CLASS)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongInputType",
+            "Input argument nrows has incorrect data type; int32 is expected.");
+    if (mxGetNumberOfElements(sub_mx) != 1)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
+            "Argument nrows should be a scalar.");
+    pStruct->nrows = *(int32_T*)mxGetData(sub_mx);
+
+    sub_mx = mxGetField(mx, 0, "ncols");
+    if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxINT32_CLASS)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongInputType",
+            "Input argument ncols has incorrect data type; int32 is expected.");
+    if (mxGetNumberOfElements(sub_mx) != 1)
+        mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
+            "Argument ncols should be a scalar.");
+    pStruct->ncols = *(int32_T*)mxGetData(sub_mx);
+}
+static void destroy_struct2_T(struct2_T *pStruct) {
+
+    free_emxArray((emxArray__common*)(pStruct->col_ptr));
+    mxFree(pStruct->col_ptr);
+
+    free_emxArray((emxArray__common*)(pStruct->row_ind));
+    mxFree(pStruct->row_ind);
+
+    free_emxArray((emxArray__common*)(pStruct->val));
+    mxFree(pStruct->val);
+
+
+}
+
+
 static void marshallin_const_emxArray_struct1_T(emxArray_struct1_T *pEmx, const mxArray *mx, const char *mname, const int dim) {
     mxArray             *sub_mx;
     int                  i;
@@ -131,12 +222,12 @@ static void marshallin_const_emxArray_struct1_T(emxArray_struct1_T *pEmx, const 
     if (!mxGetField(mx, 0, "colscal"))
         M2C_error("marshallin_const_emxArray_struct1_T:WrongType",
             "Input argument %s is missing the field colscal.", mname);
-    if (!mxGetField(mx, 0, "Lt"))
+    if (!mxGetField(mx, 0, "L"))
         M2C_error("marshallin_const_emxArray_struct1_T:WrongType",
-            "Input argument %s is missing the field Lt.", mname);
-    if (!mxGetField(mx, 0, "Ut"))
+            "Input argument %s is missing the field L.", mname);
+    if (!mxGetField(mx, 0, "U"))
         M2C_error("marshallin_const_emxArray_struct1_T:WrongType",
-            "Input argument %s is missing the field Ut.", mname);
+            "Input argument %s is missing the field U.", mname);
     if (!mxGetField(mx, 0, "d"))
         M2C_error("marshallin_const_emxArray_struct1_T:WrongType",
             "Input argument %s is missing the field d.", mname);
@@ -196,23 +287,23 @@ static void marshallin_const_emxArray_struct1_T(emxArray_struct1_T *pEmx, const 
         init_emxArray((emxArray__common*)(pEmx->data[i].colscal), 1);
         alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pEmx->data[i].colscal), "colscal", 1);
 
-        sub_mx = mxGetField(mx, i, "Lt");
+        sub_mx = mxGetField(mx, i, "L");
         if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxSTRUCT_CLASS)
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct1_T:WrongInputType",
-                "Input argument Lt has incorrect data type; struct is expected.");
+                "Input argument L has incorrect data type; struct is expected.");
         if (mxGetNumberOfElements(sub_mx) != 1)
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct1_T:WrongSizeOfInputArg",
-                "Argument Lt should be a scalar.");
-        marshallin_const_struct0_T(&pEmx->data[i].Lt, sub_mx, "Lt");
+                "Argument L should be a scalar.");
+        marshallin_const_struct2_T(&pEmx->data[i].L, sub_mx, "L");
 
-        sub_mx = mxGetField(mx, i, "Ut");
+        sub_mx = mxGetField(mx, i, "U");
         if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxSTRUCT_CLASS)
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct1_T:WrongInputType",
-                "Input argument Ut has incorrect data type; struct is expected.");
+                "Input argument U has incorrect data type; struct is expected.");
         if (mxGetNumberOfElements(sub_mx) != 1)
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct1_T:WrongSizeOfInputArg",
-                "Argument Ut should be a scalar.");
-        marshallin_const_struct0_T(&pEmx->data[i].Ut, sub_mx, "Ut");
+                "Argument U should be a scalar.");
+        marshallin_const_struct2_T(&pEmx->data[i].U, sub_mx, "U");
 
         sub_mx = mxGetField(mx, i, "d");
         if (mxGetNumberOfElements(sub_mx) && mxGetClassID(sub_mx) != mxDOUBLE_CLASS)
@@ -261,8 +352,8 @@ static void destroy_emxArray_struct1_T(emxArray_struct1_T *pEmx) {
         free_emxArray((emxArray__common*)(pEmx->data[i].colscal));
         mxFree(pEmx->data[i].colscal);
 
-        destroy_struct0_T(&pEmx->data[i].Lt);
-        destroy_struct0_T(&pEmx->data[i].Ut);
+        destroy_struct2_T(&pEmx->data[i].L);
+        destroy_struct2_T(&pEmx->data[i].U);
         free_emxArray((emxArray__common*)(pEmx->data[i].d));
         mxFree(pEmx->data[i].d);
 

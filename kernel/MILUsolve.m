@@ -19,7 +19,7 @@ zero = coder.ignoreConst(int32(0));
 one = coder.ignoreConst(int32(1));
 
 if nargin<3
-    y1 = zeros(max(M(1).Lt.nrows, M(1).negE.nrows), 1);
+    y1 = zeros(max(M(1).L.nrows, M(1).negE.nrows), 1);
 end
 if nargin<4
     y2 = zeros(M(1).negE.nrows, 1);
@@ -32,7 +32,7 @@ end
 function [b, y1, y2] = solve_milu(M, lvl, b, offset, y1, y2)
 coder.inline('never');
 
-nB = M(lvl).Lt.nrows;
+nB = M(lvl).L.nrows;
 n = nB + M(lvl).negE.nrows;
 
 % Rescale and permute first block of b
@@ -52,16 +52,16 @@ if n > nB
     end
 end
 
-if isempty(M(lvl).Lt.val) && numel(M(lvl).Ut.val) == n * n
-    % Lt is empty and Ut is a dense matrix storing result from dgetrf
-    y1 = solve_getrs(M(lvl).Ut.val, y1, nB);
+if isempty(M(lvl).L.val) && numel(M(lvl).U.val) == n * n
+    % L is empty and U is a dense matrix storing result from dgetrf
+    y1 = solve_getrs(M(lvl).U.val, y1, nB);
 else
     % It only accesses the first nB entries
-    y1 = crs_solve_utriut(M(lvl).Lt, y1);
+    y1 = ccs_solve_utril(M(lvl).L, y1);
     for i = 1:nB
         y1(i) = y1(i) / M(lvl).d(i);
     end
-    y1 = crs_solve_utrilt(M(lvl).Ut, y1);
+    y1 = ccs_solve_utriu(M(lvl).U, y1);
 end
 
 if n > nB
@@ -80,11 +80,11 @@ if n > nB
     end
 
     y1 = crs_Axpy(M(lvl).negF, y2, y1);
-    y1 = crs_solve_utriut(M(lvl).Lt, y1);
+    y1 = ccs_solve_utril(M(lvl).L, y1);
     for i = 1:nB
         y1(i) = y1(i) / M(lvl).d(i);
     end
-    y1 = crs_solve_utrilt(M(lvl).Ut, y1);
+    y1 = ccs_solve_utriu(M(lvl).U, y1);
 end
 
 % Rescale and permute solution vector
