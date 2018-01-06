@@ -118,15 +118,15 @@ for i = next_index+1:nargin
 end
 
 % Process positional arguments
-if params_start > next_index + 1 && ~isempty(varargin{next_index+1})
+if params_start >= next_index + 1 && ~isempty(varargin{next_index+1})
     rtol = double(varargin{next_index+1});
 end
 
-if params_start > next_index + 2 && ~isempty(varargin{next_index+2})
+if params_start >= next_index + 2 && ~isempty(varargin{next_index+2})
     maxit = int32(varargin{next_index+2});
 end
 
-if params_start > next_index + 3 && ~isempty(varargin{next_index+3})
+if params_start >= next_index + 3 && ~isempty(varargin{next_index+3})
     x0 = varargin{next_index+3};
 end
 

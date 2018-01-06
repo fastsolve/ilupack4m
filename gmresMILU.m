@@ -131,7 +131,7 @@ for i = next_index+1:nargin
 end
 
 % Process positional arguments
-if params_start > next_index + 1 && ~isempty(varargin{next_index+1})
+if params_start >= next_index + 1 && ~isempty(varargin{next_index+1})
     restart = int32(varargin{next_index+1});
 end
 
@@ -139,15 +139,15 @@ if restart > 100
     m2c_warning('You set restart to %d. It is recommended to maker it no greater than 100.\n', restart);
 end
 
-if params_start > next_index + 2 && ~isempty(varargin{next_index+2})
+if params_start >= next_index + 2 && ~isempty(varargin{next_index+2})
     rtol = double(varargin{next_index+2});
 end
 
-if params_start > next_index + 3 && ~isempty(varargin{next_index+3})
+if params_start >= next_index + 3 && ~isempty(varargin{next_index+3})
     maxit = int32(varargin{next_index+3});
 end
 
-if params_start > next_index + 4 && ~isempty(varargin{next_index+4})
+if params_start >= next_index + 4 && ~isempty(varargin{next_index+4})
     x0 = varargin{next_index+4};
 end
 
