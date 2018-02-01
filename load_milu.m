@@ -13,6 +13,8 @@ end
 if ~exist('load_m2c.m', 'file')
     if exist('../paracoder/startup.m', 'file')
         run('../paracoder/startup.m')
+    else
+        error('Could not find paracoder. Please checkout it out into ../paracoder/.')
     end
 elseif ~exist('m2c.m', 'file')
     load_m2c

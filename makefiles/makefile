@@ -1,5 +1,5 @@
 
-STARTDIR:=$(shell realpath ..)
+STARTDIR:=$(PWD)/..
 MYSTARTDIR=$(STARTDIR)
 
 TARGET=Octave
@@ -179,4 +179,8 @@ $(ZOBJECTS): ../lib/$(PLATFORM)/libilupack.so
 	rm -f *.o
 
 ../lib/$(PLATFORM)/libilupack_mumps.a:
-	curl -s -L https://raw.githubusercontent.com/hpdata/gdutil/master/gd_get_pub.py | python - -o - -i 0ByTwsK5_Tl_PN09kZHdNZlRwSkk | bsdtar zxf - --strip-components 1 -C .. ilupack/lib/$(PLATFORM)
+	mkdir -p ../lib/$(PLATFORM)
+	curl -s -L https://raw.githubusercontent.com/hpdata/gdutil/master/gd_get_pub.py | python - -i 0ByTwsK5_Tl_PN09kZHdNZlRwSkk
+	unzip ilupack05102016.zip
+	mv ilupack/lib/$(PLATFORM)/* ../lib/$(PLATFORM)/
+	rm -rf ilupack05102016.zip ilupack
