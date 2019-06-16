@@ -213,8 +213,8 @@ if verbose
         warning('Amount of fill is about %.1f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
             newoptions.elbow*100, options.droptol*0.1);
     else
-        fprintf(1, 'Amount of fill is about %.1f%% of original nonzeros.\n', ...
-            newoptions.elbow*100);
+        fprintf(1, 'There are %d level(s) (including dense).\nTotal number of nonzeros is %.1f%% of input matrix.\n', ...
+            length(M), newoptions.elbow*100);
     end
     fprintf(1, 'Finished ILU factorization in %.1f seconds \n', times(1));
 end
