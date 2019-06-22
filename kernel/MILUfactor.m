@@ -63,16 +63,27 @@ encountered_block_diag = 0;
 %% Compute M(i).q and change M(i).U to incorporate D
 M = repmat(struct(), length(prec), 1);
 for i = 1:length(prec)
+    if isempty(prec(i).U)
+        total_nnz = total_nnz + 2*nnz(prec(i).L) - nnz(prec(i).D);
+        total_nnz = total_nnz + 2*nnz(prec(i).E);
+    else
+        total_nnz = total_nnz + nnz(prec(i).L) + nnz(prec(i).U) - nnz(prec(i).D);
+        total_nnz = total_nnz + nnz(prec(i).E) + nnz(prec(i).F);
+    end
+    
+    if nnz(prec(i).D) ~= prec(i).nB
+        encountered_block_diag = 1;
+    end
+    if encountered_block_diag
+        continue;
+    end
+    
     M(i).p = int32(prec(i).p(:));
     M(i).q(prec(i).invq) = int32(1:prec(i).n);
     M(i).q = M(i).q(:);
 
     M(i).rowscal = prec(i).rowscal(:);
     M(i).colscal = prec(i).colscal(:);
-    
-    if nnz(prec(i).D) ~= prec(i).nB
-        encountered_block_diag = 1;
-    end
     
     if ~issparse(prec(i).L)
         % Save L and U into U as a dense matrix
@@ -97,11 +108,6 @@ for i = 1:length(prec)
         M(i).d = diag(prec(i).D);
     end
     
-    if isempty(prec(i).U)
-        total_nnz = total_nnz + 2*nnz(prec(i).L) - nnz(prec(i).D);
-    else
-        total_nnz = total_nnz + nnz(prec(i).L) + nnz(prec(i).U) - nnz(prec(i).D);
-    end
     M(i).negE = crs_createFromSparse(-prec(i).E);
     M(i).negF = crs_createFromSparse(-prec(i).F);
 end
