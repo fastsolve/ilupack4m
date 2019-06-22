@@ -277,7 +277,8 @@ myoptions = options;
 
 if isreal(A)
     myoptions.isreal = 1;
-    if norm(A-A', 1) == 0
+    if isfield(options, 'issymmetric') && options.issymmetric || ...
+        ~isfield(options, 'issymmetric') && norm(A-A', 1) == 0
         myoptions.issymmetric = 1;
         myoptions.ishermitian = 1;
     else
@@ -286,13 +287,15 @@ if isreal(A)
     end
 else
     myoptions.isreal = 0;
-    if norm(A-A', 1) == 0
+    if isfield(options, 'ishermitian') && options.ishermitian || ...
+        ~isfield(options, 'ishermitian') && norm(A-A', 1) == 0
         myoptions.ishermitian = 1;
     else
         myoptions.ishermitian = 0;
     end
     if ~myoptions.ishermitian
-        if norm(A-A.', 1) == 0
+        if isfield(options, 'issymmetric') && options.issymmetric || ...
+            ~isfield(options, 'issymmetric') && norm(A-A.', 1) == 0
             myoptions.issymmetric = 1;
         else
             myoptions.issymmetric = 0;

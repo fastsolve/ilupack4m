@@ -35,17 +35,22 @@ else
     next_index = 4;
 end
 
-options = ILUinit(A);
-
 if nargin >= next_index && ~isempty(varargin{next_index})
     opts = varargin{next_index};
+    options = ILUinit(A, opts);
     names = fieldnames(opts);
     for i = 1:length(names)
-        options.(names{i}) = cast(opts.(names{i}), class(options.(names{i})));
+        if isfield(options, names{i})
+            options.(names{i}) = cast(opts.(names{i}), class(options.(names{i})));
+        else
+            options.(names{i}) = opts.(names{i});
+        end
         if isequal(names{i}, 'droptol') && ~isfield(opts, 'droptolS')
             options.droptolS = options.droptol * 0.1;
         end
     end
+else
+    options = ILUinit(A);
 end
 
 %% Perform ILU factorization
@@ -53,6 +58,8 @@ tic
 [prec, options] = ILUfactor(A, options);
 runtime = toc;
 
+total_nnz = 0;
+encountered_block_diag = 0;
 %% Compute M(i).q and change M(i).U to incorporate D
 M = repmat(struct(), length(prec), 1);
 for i = 1:length(prec)
@@ -62,7 +69,11 @@ for i = 1:length(prec)
 
     M(i).rowscal = prec(i).rowscal(:);
     M(i).colscal = prec(i).colscal(:);
-
+    
+    if nnz(prec(i).D) ~= prec(i).nB
+        encountered_block_diag = 1;
+    end
+    
     if ~issparse(prec(i).L)
         % Save L and U into U as a dense matrix
         if isempty(prec(i).U)
@@ -70,8 +81,8 @@ for i = 1:length(prec)
         else
             LU = tril(prec(i).L, -1) + prec(i).D * prec(i).U;
         end
-        M(i).L = ccs_matrix(prec(i).n, prec(i).n);
-        M(i).U = ccs_matrix(prec(i).n, prec(i).n);
+        M(i).L = ccs_matrix(prec(i).nB, prec(i).nB);
+        M(i).U = ccs_matrix(prec(i).nB, prec(i).nB);
         M(i).U.val = LU(:);
         M(i).d = zeros(0, 1);
     else
@@ -85,12 +96,25 @@ for i = 1:length(prec)
         end
         M(i).d = diag(prec(i).D);
     end
+    
+    if isempty(prec(i).U)
+        total_nnz = total_nnz + 2*nnz(prec(i).L) - nnz(prec(i).D);
+    else
+        total_nnz = total_nnz + nnz(prec(i).L) + nnz(prec(i).U) - nnz(prec(i).D);
+    end
     M(i).negE = crs_createFromSparse(-prec(i).E);
     M(i).negF = crs_createFromSparse(-prec(i).F);
 end
 
+options.total_nnz = total_nnz;
+
 if nargout < 3
     prec = ILUdelete(prec);
+end
+
+if encountered_block_diag
+    warning('Encountered blocks in the diagonal. Cannot convert the preconditioner.\n');
+    M = [];
 end
 
 end

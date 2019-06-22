@@ -386,13 +386,10 @@ end
 
 
 if isreal(A)
-    if norm(A-A', 1) == 0
-        if isfield(options, 'isdefinite')
-            if options.isdefinite
-                options = DSPDilupackinit(A, options);
-            else
-                options = DSYMilupackinit(A, options);
-            end % if-else
+    if isfield(options, 'issymmetric') && options.issymmetric || ...
+        ~isfield(options, 'issymmetric') && norm(A-A', 1) == 0
+        if isfield(options, 'isdefinite') && options.isdefinite
+            options = DSPDilupackinit(A, options);
         else
             options = DSYMilupackinit(A, options);
         end % if
@@ -400,17 +397,15 @@ if isreal(A)
         options = DGNLilupackinit(A, options);
     end
 else
-    if norm(A-A', 1) == 0
-        if isfield(options, 'isdefinite')
-            if options.isdefinite
-                options = ZHPDilupackinit(A, options);
-            else
-                options = ZHERilupackinit(A, options);
-            end % if-else
+    if isfield(options, 'ishermitian') && options.ishermitian || ...
+        ~isfield(options, 'ishermitian') && norm(A-A', 1) == 0
+        if isfield(options, 'isdefinite') && options.isdefinite
+            options = ZHPDilupackinit(A, options);
         else
             options = ZHERilupackinit(A, options);
         end % if
-    elseif norm(A-A.', 1) == 0
+    elseif isfield(options, 'issymmetric') && options.issymmetric || ...
+        ~isfield(options, 'issymmetric') && norm(A-A.', 1) == 0
         options = ZSYMilupackinit(A, options);
     else
         options = ZGNLilupackinit(A, options);
