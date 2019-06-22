@@ -202,13 +202,11 @@ end
 
 % Perform ILU factorization
 times = zeros(2, 1);
-tic;
 if compiled
-    [M, newoptions] = MILUfactor(varargin{1:next_index-1}, options);
+    [M, newoptions, ~, times(1)] = MILUfactor(varargin{1:next_index-1}, options);
 else
-    [~, newoptions, M] = MILUfactor(varargin{1:next_index-1}, options);
+    [~, newoptions, M, times(1)] = MILUfactor(varargin{1:next_index-1}, options);
 end
-times(1) = toc;
 
 if verbose
     if newoptions.elbow < 1

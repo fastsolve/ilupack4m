@@ -1,4 +1,4 @@
-function [M, options, prec] = MILUfactor(varargin)
+function [M, options, prec, runtime] = MILUfactor(varargin)
 %MILUfactor Perform multilevel-ILU factorization
 %
 %    M = MILUfactor(A) performs ILU factorization and returns an opaque
@@ -49,7 +49,9 @@ if nargin >= next_index && ~isempty(varargin{next_index})
 end
 
 %% Perform ILU factorization
+tic
 [prec, options] = ILUfactor(A, options);
+runtime = toc;
 
 %% Compute M(i).q and change M(i).U to incorporate D
 M = repmat(struct(), length(prec), 1);
