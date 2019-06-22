@@ -3,7 +3,7 @@ function build_milu(varargin)
 
 if ~exist('OCTAVE_VERSION', 'builtin') || nargin >= 1 && isequal(varargin{1}, '-matlab')
     fprintf(1, 'Building for MATLAB with MUMPS...\n')
-    system(['cd ', miluroot, '/makefiles; make -f makefile TARGET=MATLAB']);
+    system(['cd ', miluroot, '/makefiles; make -f makefile_mc64 TARGET=MATLAB']);
 
     LIBDIR = [miluroot, '/lib/GNU64_long'];
 else
