@@ -219,7 +219,7 @@ if isempty(M) || ~compiled
     M = prec;
     kernel = ['gmresMILU_', orth, '_noncompiled'];
     kernel_func = eval(['@' kernel]);
-    warning('Will run GMRES uncompiled. Timing for GMRES will be inaccurate.\n');
+    compiled = 0;
 end
 
 if verbose
@@ -245,6 +245,7 @@ times(2) = toc;
 if verbose
     if flag == 0
         fprintf(1, 'Finished solve in %d iterations and %.2f seconds.\n', iter, times(2));
+        warning('GMRES was run without compilation. Timing result of the solve step is inaccurate, while the factorization time is accurate.');
     elseif flag == 3
         fprintf(1, 'GMRES stagnated after %d iterations and %.4g seconds.\n', iter, times(2));
     else
