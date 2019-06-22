@@ -43,6 +43,12 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %   'maxiter' [500]:  Maximum number of iterations
 %
+%   'issymmetric' [0]: whether matrix is symmetric
+%
+%   'ishermitian' [0]: whether matrix is Hermitian
+%
+%   'isdefinite' [0]: whether matrix is positive definite
+%
 %   'x0' [all-zeros]: Initial guess vector
 %
 %   'verb' [1]:  Verbosity level.
@@ -169,6 +175,12 @@ for i = params_start:2:length(varargin)-1
             verbose = int32(varargin{i+1});
         case 'orth'
             orth = varargin{i+1};
+        case 'issymmetric'
+            options.issymmetric = int32(varargin{i+1});
+        case 'ishermitian'
+            options.ishermitian = int32(varargin{i+1});
+        case 'isdefinite'
+            options.isdefinite = int32(varargin{i+1});
         case 'nthreads'
             nthreads = int32(varargin{i+1});
         case 'ordering'
@@ -202,21 +214,21 @@ end
 
 % Perform ILU factorization
 times = zeros(2, 1);
-tic;
-if compiled
-    [M, newoptions] = MILUfactor(varargin{1:next_index-1}, options);
-else
-    [~, newoptions, M] = MILUfactor(varargin{1:next_index-1}, options);
+[M, newoptions, prec, times(1)] = MILUfactor(varargin{1:next_index-1}, options);
+if isempty(M) || ~compiled
+    M = prec;
+    kernel = ['gmresMILU_', orth, '_noncompiled'];
+    kernel_func = eval(['@' kernel]);
+    warning('Will run GMRES uncompiled. Timing for GMRES will be inaccurate.\n');
 end
-times(1) = toc;
 
 if verbose
     if newoptions.elbow < 1
-        warning('Amount of fill is about %.1f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
+        warning('Amount of fill is about %.2f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
             newoptions.elbow*100, options.droptol*0.1);
     else
-        fprintf(1, 'There are %d level(s) (including dense).\nTotal number of nonzeros is %.1f%% of input matrix.\n', ...
-            length(M), newoptions.elbow*100);
+        fprintf(1, 'There are %d level(s) (including dense).\nTotal number of nonzeros is %.1f%% times of input matrix.\n', ...
+            length(M), newoptions.total_nnz/length(A.val)*100);
     end
     fprintf(1, 'Finished ILU factorization in %.4g seconds \n', times(1));
 end

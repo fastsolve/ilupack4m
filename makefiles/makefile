@@ -161,7 +161,7 @@ $(MEXDIR)/%.$(EXT): %.c
 	$(CMEX) -O $(MATCHING) $(FORTRANNAMES) $(LONGINTEGER) -I../include -I../include/$(TARGET) \
 	$(OPTS) $(OUTPUT) $(MEXDIR)/$*.$(EXT) \
 	$< \
-	-L../lib/$(PLATFORM) -lilupack $(LAPACK)
+	-L$(STARTDIR)/lib/$(PLATFORM) -lilupack $(LAPACK)
 	rm -f $*.o
 
 $(DOBJECTS): ../lib/$(PLATFORM)/libilupack.so
