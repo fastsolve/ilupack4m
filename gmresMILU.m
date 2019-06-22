@@ -62,6 +62,8 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %          'rcm'    - Reverse Cuthill-McKee
 %          'mmd'    - Minimum Degree
 %          'amf'    - Approximate Minimum Fill
+%          'indset' - Independent sets
+%          'pq'     - ddPQ from ARMS
 %          ''       - no reordering
 %
 %   'condest'  [5]: Bound for the inverse triangular factors from the ILU
@@ -216,7 +218,7 @@ if verbose
         fprintf(1, 'There are %d level(s) (including dense).\nTotal number of nonzeros is %.1f%% of input matrix.\n', ...
             length(M), newoptions.elbow*100);
     end
-    fprintf(1, 'Finished ILU factorization in %.1f seconds \n', times(1));
+    fprintf(1, 'Finished ILU factorization in %.4g seconds \n', times(1));
 end
 
 if verbose
@@ -230,11 +232,11 @@ times(2) = toc;
 
 if verbose
     if flag == 0
-        fprintf(1, 'Finished solve in %d iterations and %.1f seconds.\n', iter, times(2));
+        fprintf(1, 'Finished solve in %d iterations and %.2f seconds.\n', iter, times(2));
     elseif flag == 3
-        fprintf(1, 'GMRES stagnated after %d iterations and %.1f seconds.\n', iter, times(2));
+        fprintf(1, 'GMRES stagnated after %d iterations and %.4g seconds.\n', iter, times(2));
     else
-        fprintf(1, 'GMRES failed to converge after %d iterations and %.1f seconds.\n', iter, times(2));
+        fprintf(1, 'GMRES failed to converge after %d iterations and %.4g seconds.\n', iter, times(2));
     end
 end
 
