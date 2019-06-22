@@ -63,7 +63,11 @@ for i = 1:length(prec)
 
     if ~issparse(prec(i).L)
         % Save L and U into U as a dense matrix
-        LU = tril(prec(i).L, -1) + prec(i).D * prec(i).U;
+        if isempty(prec(i).U)
+            LU = tril(prec(i).L, -1) + prec(i).D * prec(i).L';
+        else
+            LU = tril(prec(i).L, -1) + prec(i).D * prec(i).U;
+        end
         M(i).L = ccs_matrix(prec(i).n, prec(i).n);
         M(i).U = ccs_matrix(prec(i).n, prec(i).n);
         M(i).U.val = LU(:);
@@ -72,7 +76,11 @@ for i = 1:length(prec)
         % Extract strictly lower and upper triangular parts of L and U
         % Store transpose to allow parallelism
         M(i).L = ccs_createFromSparse(tril(prec(i).L, -1) / prec(i).D);
-        M(i).U = ccs_createFromSparse(triu(prec(i).D \ prec(i).U, 1));
+        if isempty(prec(i).U)
+            M(i).U = ccs_createFromSparse((tril(prec(i).L, -1) / prec(i).D)');
+        else
+            M(i).U = ccs_createFromSparse(triu(prec(i).D \ prec(i).U, 1));
+        end
         M(i).d = diag(prec(i).D);
     end
     M(i).negE = crs_createFromSparse(-prec(i).E);
