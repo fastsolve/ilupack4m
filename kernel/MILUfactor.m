@@ -113,7 +113,7 @@ if nargout < 3
 end
 
 if encountered_block_diag
-    warning('Encountered blocks in the diagonal. Cannot convert the preconditioner.\n');
+    warning('Encountered blocks in the diagonal. Cannot convert the preconditioner.');
     M = [];
 end
 
