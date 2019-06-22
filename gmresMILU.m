@@ -160,7 +160,8 @@ if params_start > next_index + 4 && ~isempty(varargin{next_index+4})
 end
 
 % Process argument-value pairs to update arguments
-options = struct('ordering', 'amd', 'droptol', 0.001, 'condest', 5);
+options = struct('ordering', 'amd', 'droptol', 0.001, 'condest', 5, ...
+    'issymmetric', 0, 'ishermitian', 0, 'isdefinite', 0);
 for i = params_start:2:length(varargin)-1
     switch lower(varargin{i})
         case {'maxit', 'maxiter'}
@@ -209,7 +210,16 @@ kernel_func = eval(['@' kernel]);
 compiled = exist([kernel '.' mexext], 'file');
 
 if verbose
-    fprintf(1, 'Performing ILU facotirzation...\n');
+    if options.issymmetric
+        if options.isdefinite
+            version  = 'symmetric positive definite (SPD)';
+        else
+            version  = 'symmetric indefinite';
+        end
+    else
+        version  = 'nonsymmetric';
+    end
+    fprintf(1, ['Performing ', version ,' ILU factorization...\n']);
 end
 
 % Perform ILU factorization
@@ -224,7 +234,7 @@ end
 
 if verbose
     if newoptions.elbow < 1
-        warning('Amount of fill is about %.2f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
+        warning('Total nnz in PREC is about %.2f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
             newoptions.elbow*100, options.droptol*0.1);
     else
         fprintf(1, 'There are %d level(s) (including dense).\nTotal number of nonzeros is %.1f%% times of input matrix.\n', ...
