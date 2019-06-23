@@ -70,7 +70,7 @@ for i = 1:length(prec)
         nnz_offdiag = nnz_offdiag  + 2*nnz(prec(i).E);
     else
         nnz_total = nnz_total + nnz(prec(i).L) + nnz(prec(i).U) - nnz(prec(i).D);
-        nnz_offdiag = nnz_total + nnz(prec(i).E) + nnz(prec(i).F);
+        nnz_offdiag = nnz_offdiag + nnz(prec(i).E) + nnz(prec(i).F);
     end
     
     if nnz(prec(i).D) ~= prec(i).nB
