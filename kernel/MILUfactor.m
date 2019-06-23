@@ -58,17 +58,19 @@ tic
 [prec, options] = ILUfactor(A, options);
 runtime = toc;
 
-total_nnz = 0;
+nnz_total = 0;
+nnz_offdiag = 0;  % nonzeros in off-diagonal blocks (i.e., E and F)
 encountered_block_diag = 0;
+
 %% Compute M(i).q and change M(i).U to incorporate D
 M = repmat(struct(), length(prec), 1);
 for i = 1:length(prec)
     if isempty(prec(i).U)
-        total_nnz = total_nnz + 2*nnz(prec(i).L) - nnz(prec(i).D);
-        total_nnz = total_nnz + 2*nnz(prec(i).E);
+        nnz_total = nnz_total + 2*nnz(prec(i).L) - nnz(prec(i).D);
+        nnz_offdiag = nnz_offdiag  + 2*nnz(prec(i).E);
     else
-        total_nnz = total_nnz + nnz(prec(i).L) + nnz(prec(i).U) - nnz(prec(i).D);
-        total_nnz = total_nnz + nnz(prec(i).E) + nnz(prec(i).F);
+        nnz_total = nnz_total + nnz(prec(i).L) + nnz(prec(i).U) - nnz(prec(i).D);
+        nnz_offdiag = nnz_total + nnz(prec(i).E) + nnz(prec(i).F);
     end
     
     if nnz(prec(i).D) ~= prec(i).nB
@@ -112,7 +114,8 @@ for i = 1:length(prec)
     M(i).negF = crs_createFromSparse(-prec(i).F);
 end
 
-options.total_nnz = total_nnz;
+options.nnz_offdiag = nnz_offdiag;
+options.nnz_total = nnz_total + nnz_offdiag;
 
 if nargout < 3
     prec = ILUdelete(prec);

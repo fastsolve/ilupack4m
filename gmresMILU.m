@@ -237,8 +237,11 @@ if verbose
         warning('Total nnz in PREC is about %.2f%% of original nonzeros. You may want to decrease droptol to %g.\n', ...
             newoptions.elbow*100, options.droptol*0.1);
     else
-        fprintf(1, 'There are %d level(s) (including dense).\nTotal number of nonzeros is %.1f%% times of input matrix.\n', ...
-            length(M), newoptions.total_nnz/length(A.val)*100);
+        fprintf(1, 'There are %d level(s) (including dense).\n', length(M));
+        fprintf(1, 'Total nnz in PREC is %.1f%% times of input matrix; ', ...
+            newoptions.nnz_total/length(A.val)*100);
+        fprintf(1, '%.1f%% of nnz are in E and F.\n', ...
+            newoptions.nnz_offdiag/newoptions.nnz_total*100);
     end
     fprintf(1, 'Finished ILU factorization in %.4g seconds \n', times(1));
 end
@@ -255,8 +258,8 @@ times(2) = toc;
 if verbose
     if flag == 0
         fprintf(1, 'Finished solve in %d iterations and %.2f seconds.\n', iter, times(2));
-        if ~compiled
-            warning('GMRES was run without compilation. Timing result of the solve step is inaccurate, while the factorization time is accurate.');
+        if ~compiled && exist('OCTAVE_VERSION', 'builtin')
+            warning('The solve step used uncomplied GMRES, so its timing is inaccurate.');
         end
     elseif flag == 3
         fprintf(1, 'GMRES stagnated after %d iterations and %.4g seconds.\n', iter, times(2));
