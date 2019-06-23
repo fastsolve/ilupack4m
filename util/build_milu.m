@@ -2,7 +2,7 @@ function build_milu(varargin)
 % Build ILUPACK
 
 if ~exist('OCTAVE_VERSION', 'builtin') || nargin >= 1 && isequal(varargin{1}, '-matlab')
-    fprintf(1, 'Building for MATLAB with MUMPS...\n')
+    fprintf(1, 'Building for MATLAB with MC64...\n')
     system(['cd ', miluroot, '/makefiles; make -f makefile_mc64 TARGET=MATLAB']);
 
     LIBDIR = [miluroot, '/lib/GNU64_long'];
