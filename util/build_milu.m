@@ -7,7 +7,7 @@ if ~exist('OCTAVE_VERSION', 'builtin') || nargin >= 1 && isequal(varargin{1}, '-
 
     LIBDIR = [miluroot, '/lib/GNU64_long'];
 else
-    fprintf(1, 'Building for Octave with MC64...\n')
+    fprintf(1, 'Building for Octave with MUMPS...\n')
     system(['cd ', miluroot, '/makefiles; make -f makefile TARGET=Octave']);
     LIBDIR = [miluroot, '/lib/GNU64'];
 end
