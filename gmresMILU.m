@@ -88,6 +88,8 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %   'lfil' [0]: Maximum number of nonzeros per column in L (resp. per row in U).
 %    Use 0 for unlimited (recommended).
 %
+%   'mixedprecision' [0]: require the computation of ILU in single precision.
+%
 %   'elbow' [10]: elbow space for the ILU. ILUPACK may overwrite this parameter at runtime.
 %
 %   'nthreads' [1]: Maximal number of threads to use
@@ -207,6 +209,8 @@ for i = params_start:2:length(varargin)-1
             options.elbow = double(varargin{i+1});
         case 'lfil'
             options.lfil = double(varargin{i+1});
+        case 'mixedprecision'
+            options.mixedprecision = double(varargin{i+1});
         case 'nthreads'
             nthreads = int32(varargin{i+1});
         otherwise
