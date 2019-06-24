@@ -43,7 +43,8 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %   'maxiter' [500]:  Maximum number of iterations
 %
-%   'issymmetric' [0]: whether matrix is symmetric
+%   'issymmetric' [-1]: whether matrix is symmetric. 1 for symmetric, 
+%                  0 for nonsymmetric, and -1 for auto-detection.
 %
 %   'ishermitian' [0]: whether matrix is Hermitian
 %
@@ -60,6 +61,8 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %          'CGS' - classical Gram-Schmidt (faster in parallel but less stable)
 %          'MGS' - modified Gram-Schmidt (slower in parallel but more stable)
 %          'HO'  - Householder (slowest but the most stable)
+%
+%   'matching' [1]: whether to use maximum weight matching.
 %
 %   'ordering' ['amd']: Reorderings based on |A|+|A|'.
 %          'amd'    - Approximate Minimum Degree
@@ -81,6 +84,11 @@ function [x, flag, iter, resids, times] = gmresMILU(varargin)
 %
 %   'droptols' [droptol*0.1]: Threshold for dropping small entries from the
 %    Schur complement. Recommended value is one order smaller than droptol.
+%
+%   'lfil' [0]: Maximum number of nonzeros per column in L (resp. per row in U).
+%    Use 0 for unlimited (recommended).
+%
+%   'elbow' [10]: elbow space for the ILU. ILUPACK may overwrite this parameter at runtime.
 %
 %   'nthreads' [1]: Maximal number of threads to use
 %
@@ -161,7 +169,7 @@ end
 
 % Process argument-value pairs to update arguments
 options = struct('ordering', 'amd', 'droptol', 0.001, 'condest', 5, ...
-    'issymmetric', 0, 'ishermitian', 0, 'isdefinite', 0);
+    'issymmetric', -1, 'ishermitian', 0, 'isdefinite', 0);
 for i = params_start:2:length(varargin)-1
     switch lower(varargin{i})
         case {'maxit', 'maxiter'}
@@ -176,14 +184,14 @@ for i = params_start:2:length(varargin)-1
             verbose = int32(varargin{i+1});
         case 'orth'
             orth = varargin{i+1};
+        case 'matching'
+            options.matching = int32(varargin{i+1});
         case 'issymmetric'
             options.issymmetric = int32(varargin{i+1});
         case 'ishermitian'
             options.ishermitian = int32(varargin{i+1});
         case 'isdefinite'
             options.isdefinite = int32(varargin{i+1});
-        case 'nthreads'
-            nthreads = int32(varargin{i+1});
         case 'ordering'
             options.ordering = varargin{i+1};
         case 'droptol'
@@ -195,6 +203,12 @@ for i = params_start:2:length(varargin)-1
             end
         case 'droptols'
             options.droptolS = double(varargin{i+1});
+        case 'elbow'
+            options.elbow = double(varargin{i+1});
+        case 'lfil'
+            options.lfil = double(varargin{i+1});
+        case 'nthreads'
+            nthreads = int32(varargin{i+1});
         otherwise
             error('Unknown tuning parameter "%s"', varargin{i});
     end
@@ -208,6 +222,10 @@ kernel = ['gmresMILU_', orth];
 kernel_func = eval(['@' kernel]);
 
 compiled = exist([kernel '.' mexext], 'file');
+
+if options.issymmetric == -1
+    options.issymmetric = issymmetric(crs_2sparse(A));
+end
 
 if verbose
     if options.issymmetric
