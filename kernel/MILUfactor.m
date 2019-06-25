@@ -89,7 +89,7 @@ for i = 1:length(prec)
     
     if isequal(M(i).p, M(i).q) && isequal(M(i).rowscal, M(i).colscal)
         fprintf(1, 'Note: Level %d uses symmetric reordering and scaling for a nonsymmetric block.\n', i);
-    elseif isequal(M(i).p, M(i).q)
+    elseif isequal(M(i).p, M(i).q) && ~all(M(i).p==(1:prec(i).n)')
         fprintf(1, 'Note: Level %d uses symmetric reordering but nonsymmetric scaling.\n', i);
     elseif isequal(M(i).rowscal, M(i).colscal) && ~all(M(i).rowscal==1)
         fprintf(1, 'Note: Level %d uses symmetric scaling but nonsymmetric reordering.\n', i);
