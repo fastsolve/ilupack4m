@@ -1,9 +1,7 @@
 #ifndef BICGSTABMILU_KERNEL_H
 #define BICGSTABMILU_KERNEL_H
-#include <math.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <string.h>
 #include "rtwtypes.h"
 #include "bicgstabMILU_kernel_types.h"
 

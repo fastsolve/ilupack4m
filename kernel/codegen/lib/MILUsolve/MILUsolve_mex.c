@@ -51,7 +51,7 @@ static void marshallin_const_struct1_T(struct1_T *pStruct, const mxArray *mx, co
             "Input argument col_ptr has incorrect data type; int32 is expected.");
     if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
         mexErrMsgIdAndTxt("marshallin_const_struct1_T:WrongSizeOfInputArg",
-            "Dimension 2 of col_ptr should equal 1.");
+            "Dimension 2 of col_ptr should be equal to 1.");
     pStruct->col_ptr = mxMalloc(sizeof(emxArray_int32_T));
     init_emxArray((emxArray__common*)(pStruct->col_ptr), 1);
     alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->col_ptr), "col_ptr", 1);
@@ -62,7 +62,7 @@ static void marshallin_const_struct1_T(struct1_T *pStruct, const mxArray *mx, co
             "Input argument row_ind has incorrect data type; int32 is expected.");
     if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
         mexErrMsgIdAndTxt("marshallin_const_struct1_T:WrongSizeOfInputArg",
-            "Dimension 2 of row_ind should equal 1.");
+            "Dimension 2 of row_ind should be equal to 1.");
     pStruct->row_ind = mxMalloc(sizeof(emxArray_int32_T));
     init_emxArray((emxArray__common*)(pStruct->row_ind), 1);
     alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->row_ind), "row_ind", 1);
@@ -73,7 +73,7 @@ static void marshallin_const_struct1_T(struct1_T *pStruct, const mxArray *mx, co
             "Input argument val has incorrect data type; double is expected.");
     if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
         mexErrMsgIdAndTxt("marshallin_const_struct1_T:WrongSizeOfInputArg",
-            "Dimension 2 of val should equal 1.");
+            "Dimension 2 of val should be equal to 1.");
     pStruct->val = mxMalloc(sizeof(emxArray_real_T));
     init_emxArray((emxArray__common*)(pStruct->val), 1);
     alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->val), "val", 1);
@@ -142,7 +142,7 @@ static void marshallin_const_struct2_T(struct2_T *pStruct, const mxArray *mx, co
             "Input argument row_ptr has incorrect data type; int32 is expected.");
     if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
         mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
-            "Dimension 2 of row_ptr should equal 1.");
+            "Dimension 2 of row_ptr should be equal to 1.");
     pStruct->row_ptr = mxMalloc(sizeof(emxArray_int32_T));
     init_emxArray((emxArray__common*)(pStruct->row_ptr), 1);
     alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->row_ptr), "row_ptr", 1);
@@ -153,7 +153,7 @@ static void marshallin_const_struct2_T(struct2_T *pStruct, const mxArray *mx, co
             "Input argument col_ind has incorrect data type; int32 is expected.");
     if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
         mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
-            "Dimension 2 of col_ind should equal 1.");
+            "Dimension 2 of col_ind should be equal to 1.");
     pStruct->col_ind = mxMalloc(sizeof(emxArray_int32_T));
     init_emxArray((emxArray__common*)(pStruct->col_ind), 1);
     alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->col_ind), "col_ind", 1);
@@ -164,7 +164,7 @@ static void marshallin_const_struct2_T(struct2_T *pStruct, const mxArray *mx, co
             "Input argument val has incorrect data type; double is expected.");
     if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
         mexErrMsgIdAndTxt("marshallin_const_struct2_T:WrongSizeOfInputArg",
-            "Dimension 2 of val should equal 1.");
+            "Dimension 2 of val should be equal to 1.");
     pStruct->val = mxMalloc(sizeof(emxArray_real_T));
     init_emxArray((emxArray__common*)(pStruct->val), 1);
     alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pStruct->val), "val", 1);
@@ -249,7 +249,7 @@ static void marshallin_const_emxArray_struct0_T(emxArray_struct0_T *pEmx, const 
                 "Input argument p has incorrect data type; int32 is expected.");
         if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct0_T:WrongSizeOfInputArg",
-                "Dimension 2 of p should equal 1.");
+                "Dimension 2 of p should be equal to 1.");
         pEmx->data[i].p = mxMalloc(sizeof(emxArray_int32_T));
         init_emxArray((emxArray__common*)(pEmx->data[i].p), 1);
         alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pEmx->data[i].p), "p", 1);
@@ -260,7 +260,7 @@ static void marshallin_const_emxArray_struct0_T(emxArray_struct0_T *pEmx, const 
                 "Input argument q has incorrect data type; int32 is expected.");
         if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct0_T:WrongSizeOfInputArg",
-                "Dimension 2 of q should equal 1.");
+                "Dimension 2 of q should be equal to 1.");
         pEmx->data[i].q = mxMalloc(sizeof(emxArray_int32_T));
         init_emxArray((emxArray__common*)(pEmx->data[i].q), 1);
         alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pEmx->data[i].q), "q", 1);
@@ -271,7 +271,7 @@ static void marshallin_const_emxArray_struct0_T(emxArray_struct0_T *pEmx, const 
                 "Input argument rowscal has incorrect data type; double is expected.");
         if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct0_T:WrongSizeOfInputArg",
-                "Dimension 2 of rowscal should equal 1.");
+                "Dimension 2 of rowscal should be equal to 1.");
         pEmx->data[i].rowscal = mxMalloc(sizeof(emxArray_real_T));
         init_emxArray((emxArray__common*)(pEmx->data[i].rowscal), 1);
         alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pEmx->data[i].rowscal), "rowscal", 1);
@@ -282,7 +282,7 @@ static void marshallin_const_emxArray_struct0_T(emxArray_struct0_T *pEmx, const 
                 "Input argument colscal has incorrect data type; double is expected.");
         if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct0_T:WrongSizeOfInputArg",
-                "Dimension 2 of colscal should equal 1.");
+                "Dimension 2 of colscal should be equal to 1.");
         pEmx->data[i].colscal = mxMalloc(sizeof(emxArray_real_T));
         init_emxArray((emxArray__common*)(pEmx->data[i].colscal), 1);
         alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pEmx->data[i].colscal), "colscal", 1);
@@ -311,7 +311,7 @@ static void marshallin_const_emxArray_struct0_T(emxArray_struct0_T *pEmx, const 
                 "Input argument d has incorrect data type; double is expected.");
         if (mxGetNumberOfElements(sub_mx) && mxGetDimensions(sub_mx)[1] != 1) 
             mexErrMsgIdAndTxt("marshallin_const_emxArray_struct0_T:WrongSizeOfInputArg",
-                "Dimension 2 of d should equal 1.");
+                "Dimension 2 of d should be equal to 1.");
         pEmx->data[i].d = mxMalloc(sizeof(emxArray_real_T));
         init_emxArray((emxArray__common*)(pEmx->data[i].d), 1);
         alias_mxArray_to_emxArray(sub_mx, (emxArray__common *)(pEmx->data[i].d), "d", 1);
@@ -376,7 +376,7 @@ static void __MILUsolve_api(mxArray **plhs, const mxArray ** prhs) {
             "Input argument M has incorrect data type; struct is expected.");
     if (mxGetNumberOfElements(prhs[0]) && mxGetDimensions(prhs[0])[1] != 1) 
         mexErrMsgIdAndTxt("MILUsolve:WrongSizeOfInputArg",
-            "Dimension 2 of M should equal 1.");
+            "Dimension 2 of M should be equal to 1.");
     marshallin_const_emxArray_struct0_T(&M, prhs[0], "M", 1);
 
     if (mxGetNumberOfElements(prhs[1]) && mxGetClassID(prhs[1]) != mxDOUBLE_CLASS)
@@ -384,7 +384,7 @@ static void __MILUsolve_api(mxArray **plhs, const mxArray ** prhs) {
             "Input argument b has incorrect data type; double is expected.");
     if (mxGetNumberOfElements(prhs[1]) && mxGetDimensions(prhs[1])[1] != 1) 
         mexErrMsgIdAndTxt("MILUsolve:WrongSizeOfInputArg",
-            "Dimension 2 of b should equal 1.");
+            "Dimension 2 of b should be equal to 1.");
     copy_mxArray_to_emxArray(prhs[1], (emxArray__common *)(&b), "b", 1);
 
     if (mxGetNumberOfElements(prhs[2]) && mxGetClassID(prhs[2]) != mxDOUBLE_CLASS)
@@ -392,7 +392,7 @@ static void __MILUsolve_api(mxArray **plhs, const mxArray ** prhs) {
             "Input argument y1 has incorrect data type; double is expected.");
     if (mxGetNumberOfElements(prhs[2]) && mxGetDimensions(prhs[2])[1] != 1) 
         mexErrMsgIdAndTxt("MILUsolve:WrongSizeOfInputArg",
-            "Dimension 2 of y1 should equal 1.");
+            "Dimension 2 of y1 should be equal to 1.");
     copy_mxArray_to_emxArray(prhs[2], (emxArray__common *)(&b_y1), "y1", 1);
 
     if (mxGetNumberOfElements(prhs[3]) && mxGetClassID(prhs[3]) != mxDOUBLE_CLASS)
@@ -400,7 +400,7 @@ static void __MILUsolve_api(mxArray **plhs, const mxArray ** prhs) {
             "Input argument y2 has incorrect data type; double is expected.");
     if (mxGetNumberOfElements(prhs[3]) && mxGetDimensions(prhs[3])[1] != 1) 
         mexErrMsgIdAndTxt("MILUsolve:WrongSizeOfInputArg",
-            "Dimension 2 of y2 should equal 1.");
+            "Dimension 2 of y2 should be equal to 1.");
     copy_mxArray_to_emxArray(prhs[3], (emxArray__common *)(&y2), "y2", 1);
 
     /* Invoke the target function */
@@ -427,7 +427,7 @@ static void __MILUsolve_2args_api(mxArray **plhs, const mxArray ** prhs) {
             "Input argument M has incorrect data type; struct is expected.");
     if (mxGetNumberOfElements(prhs[0]) && mxGetDimensions(prhs[0])[1] != 1) 
         mexErrMsgIdAndTxt("MILUsolve_2args:WrongSizeOfInputArg",
-            "Dimension 2 of M should equal 1.");
+            "Dimension 2 of M should be equal to 1.");
     marshallin_const_emxArray_struct0_T(&M, prhs[0], "M", 1);
 
     if (mxGetNumberOfElements(prhs[1]) && mxGetClassID(prhs[1]) != mxDOUBLE_CLASS)
@@ -435,7 +435,7 @@ static void __MILUsolve_2args_api(mxArray **plhs, const mxArray ** prhs) {
             "Input argument b has incorrect data type; double is expected.");
     if (mxGetNumberOfElements(prhs[1]) && mxGetDimensions(prhs[1])[1] != 1) 
         mexErrMsgIdAndTxt("MILUsolve_2args:WrongSizeOfInputArg",
-            "Dimension 2 of b should equal 1.");
+            "Dimension 2 of b should be equal to 1.");
     copy_mxArray_to_emxArray(prhs[1], (emxArray__common *)(&b), "b", 1);
 
     /* Invoke the target function */

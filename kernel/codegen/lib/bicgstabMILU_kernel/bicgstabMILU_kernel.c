@@ -1,9 +1,8 @@
 #include "bicgstabMILU_kernel.h"
 #include "m2c.h"
 #include "omp.h"
+#include <math.h>
 
-static void MILUsolve(const emxArray_struct1_T *M, emxArray_real_T *b,
-                      emxArray_real_T *b_y1, emxArray_real_T *y2);
 static void b_m2c_error(void);
 static void crs_Axpy_kernel(const emxArray_int32_T *row_ptr, const
   emxArray_int32_T *col_ind, const emxArray_real_T *val, const emxArray_real_T
@@ -20,12 +19,6 @@ static void m2c_printf(int varargin_2, double varargin_3);
 static void m2c_warn(void);
 static void solve_milu(const emxArray_struct1_T *M, int lvl, emxArray_real_T *b,
   int offset, emxArray_real_T *b_y1, emxArray_real_T *y2);
-static void MILUsolve(const emxArray_struct1_T *M, emxArray_real_T *b,
-                      emxArray_real_T *b_y1, emxArray_real_T *y2)
-{
-  solve_milu(M, 1, b, 0, b_y1, y2);
-}
-
 static void b_m2c_error(void)
 {
   const char * msgid;
@@ -40,15 +33,22 @@ static void crs_Axpy_kernel(const emxArray_int32_T *row_ptr, const
   *x, emxArray_real_T *y, int nrows)
 {
   int i;
+  int b_i;
+  int t_tmp;
   double t;
+  int c_i;
   int j;
-  for (i = 0; i + 1 <= nrows; i++) {
-    t = y->data[i];
-    for (j = row_ptr->data[i]; j < row_ptr->data[i + 1]; j++) {
-      t += val->data[j - 1] * x->data[col_ind->data[j - 1] - 1];
+  for (i = 0; i < nrows; i++) {
+    b_i = i + 1;
+    t_tmp = b_i + -1;
+    t = y->data[t_tmp];
+    c_i = row_ptr->data[b_i - 1];
+    b_i = row_ptr->data[b_i] - 1;
+    for (j = c_i; j <= b_i; j++) {
+      t += val->data[j - 1] * x->data[col_ind->data[j - 1] + -1];
     }
 
-    y->data[i] = t;
+    y->data[t_tmp] = t;
   }
 }
 
@@ -62,7 +62,7 @@ static void crs_prodAx(const emxArray_int32_T *A_row_ptr, const emxArray_int32_T
   }
 
   n = omp_get_nested();
-  if (!(n != 0)) {
+  if (n == 0) {
     n = omp_get_num_threads();
     if ((n > 1) && (nthreads > 1)) {
 
@@ -88,41 +88,43 @@ static void crs_prodAx_kernel(const emxArray_int32_T *row_ptr, const
 {
   int istart;
   int iend;
-  double t;
   int chunk;
+  int threadID;
+  double t;
   int b_remainder;
+  int j;
   if (varargin_1) {
-    istart = omp_get_num_threads();
-    if (istart == 1) {
+    iend = omp_get_num_threads();
+    if (iend == 1) {
       istart = 0;
       iend = nrows;
     } else {
-      iend = omp_get_thread_num();
-      chunk = nrows / istart;
-      b_remainder = nrows - istart * chunk;
-      if (b_remainder < iend) {
-        istart = b_remainder;
+      threadID = omp_get_thread_num();
+      chunk = nrows / iend;
+      b_remainder = nrows - iend * chunk;
+      if (b_remainder < threadID) {
+        iend = b_remainder;
       } else {
-        istart = iend;
+        iend = threadID;
       }
 
-      istart += iend * chunk;
-      iend = (istart + chunk) + (iend < b_remainder);
+      istart = threadID * chunk + iend;
+      iend = (istart + chunk) + (threadID < b_remainder);
     }
   } else {
     istart = 0;
     iend = nrows;
   }
 
-  for (istart++; istart <= iend; istart++) {
+  for (chunk = istart + 1; chunk <= iend; chunk++) {
     t = 0.0;
-    for (b_remainder = row_ptr->data[istart - 1]; b_remainder < row_ptr->
-         data[istart]; b_remainder++) {
-      t += val->data[b_remainder - 1] * x->data[col_ind->data[b_remainder - 1] -
-        1];
+    b_remainder = row_ptr->data[chunk - 1];
+    threadID = row_ptr->data[chunk] - 1;
+    for (j = b_remainder; j <= threadID; j++) {
+      t += val->data[j - 1] * x->data[col_ind->data[j - 1] + -1];
     }
 
-    b->data[istart - 1] = t;
+    b->data[chunk + -1] = t;
   }
 }
 
@@ -170,68 +172,79 @@ static void solve_milu(const emxArray_struct1_T *M, int lvl, emxArray_real_T *b,
 {
   int nB;
   int n;
-  int i;
   int b_n;
+  int i;
+  int i1;
   int k;
   int j;
-  nB = M->data[lvl - 1].L.nrows;
+  int i2;
+  int i3;
+  nB = M->data[lvl - 1].L.nrows - 1;
   n = M->data[lvl - 1].L.nrows + M->data[lvl - 1].negE.nrows;
-  for (i = 0; i + 1 <= nB; i++) {
-    b_y1->data[i] = M->data[lvl - 1].rowscal->data[M->data[lvl - 1].p->data[i] -
-      1] * b->data[(M->data[lvl - 1].p->data[i] + offset) - 1];
+  for (b_n = 0; b_n <= nB; b_n++) {
+    b_y1->data[b_n] = M->data[lvl - 1].rowscal->data[M->data[lvl - 1].p->
+      data[b_n] - 1] * b->data[(M->data[lvl - 1].p->data[b_n] + offset) - 1];
   }
 
-  for (i = M->data[lvl - 1].L.nrows; i + 1 <= n; i++) {
-    y2->data[i - nB] = M->data[lvl - 1].rowscal->data[M->data[lvl - 1].p->data[i]
-      - 1] * b->data[(M->data[lvl - 1].p->data[i] + offset) - 1];
+  i = M->data[lvl - 1].L.nrows + 1;
+  for (b_n = i; b_n <= n; b_n++) {
+    i1 = M->data[lvl - 1].p->data[b_n - 1];
+    y2->data[(b_n - nB) - 2] = M->data[lvl - 1].rowscal->data[i1 - 1] * b->data
+      [(i1 + offset) - 1];
   }
 
   if (n > M->data[lvl - 1].L.nrows) {
-    for (i = 0; i + 1 <= nB; i++) {
-      b->data[offset + i] = b_y1->data[i];
+    for (b_n = 0; b_n <= nB; b_n++) {
+      b->data[offset + b_n] = b_y1->data[b_n];
     }
   }
 
   if ((M->data[lvl - 1].L.val->size[0] == 0) && (M->data[lvl - 1].U.val->size[0]
        == n * n)) {
     k = 0;
-    for (j = 1; j <= nB; j++) {
-      k += j;
-      for (i = j; i + 1 <= nB; i++) {
-        b_y1->data[i] -= M->data[lvl - 1].U.val->data[k] * b_y1->data[j - 1];
+    for (j = 0; j <= nB; j++) {
+      k = (k + j) + 1;
+      i1 = j + 2;
+      for (b_n = i1; b_n <= nB + 1; b_n++) {
+        b_y1->data[b_n - 1] -= M->data[lvl - 1].U.val->data[k] * b_y1->data[j];
         k++;
       }
     }
 
     k = M->data[lvl - 1].L.nrows * M->data[lvl - 1].L.nrows - 1;
-    for (j = M->data[lvl - 1].L.nrows - 1; j + 1 > 0; j--) {
-      b_y1->data[j] /= M->data[lvl - 1].U.val->data[k];
-      for (i = j; i > 0; i--) {
+    for (j = nB + 1; j >= 1; j--) {
+      b_y1->data[j - 1] /= M->data[lvl - 1].U.val->data[k];
+      i1 = j - 1;
+      for (b_n = i1; b_n >= 1; b_n--) {
         k--;
-        b_y1->data[i - 1] -= M->data[lvl - 1].U.val->data[k] * b_y1->data[j];
+        b_y1->data[b_n - 1] -= M->data[lvl - 1].U.val->data[k] * b_y1->data[j -
+          1];
       }
 
-      k = ((k - nB) + j) - 1;
+      k = ((k - nB) + j) - 3;
     }
   } else {
-    b_n = M->data[lvl - 1].L.col_ptr->size[0] - 1;
-    for (j = 1; j <= b_n; j++) {
-      for (k = M->data[lvl - 1].L.col_ptr->data[j - 1] - 1; k + 1 < M->data[lvl
-           - 1].L.col_ptr->data[j]; k++) {
-        b_y1->data[M->data[lvl - 1].L.row_ind->data[k] - 1] -= M->data[lvl - 1].
-          L.val->data[k] * b_y1->data[j - 1];
+    b_n = M->data[lvl - 1].L.col_ptr->size[0];
+    for (j = 0; j <= b_n - 2; j++) {
+      i1 = M->data[lvl - 1].L.col_ptr->data[j];
+      i2 = M->data[lvl - 1].L.col_ptr->data[j + 1] - 1;
+      for (k = i1; k <= i2; k++) {
+        i3 = M->data[lvl - 1].L.row_ind->data[k - 1] - 1;
+        b_y1->data[i3] -= M->data[lvl - 1].L.val->data[k - 1] * b_y1->data[j];
       }
     }
 
-    for (i = 0; i + 1 <= nB; i++) {
-      b_y1->data[i] /= M->data[lvl - 1].d->data[i];
+    for (b_n = 0; b_n <= nB; b_n++) {
+      b_y1->data[b_n] /= M->data[lvl - 1].d->data[b_n];
     }
 
-    for (j = M->data[lvl - 1].U.col_ptr->size[0] - 1; j > 0; j--) {
-      for (k = M->data[lvl - 1].U.col_ptr->data[j - 1] - 1; k + 1 < M->data[lvl
-           - 1].U.col_ptr->data[j]; k++) {
-        b_y1->data[M->data[lvl - 1].U.row_ind->data[k] - 1] -= M->data[lvl - 1].
-          U.val->data[k] * b_y1->data[j - 1];
+    b_n = M->data[lvl - 1].U.col_ptr->size[0] - 1;
+    for (j = b_n; j >= 1; j--) {
+      i1 = M->data[lvl - 1].U.col_ptr->data[j - 1];
+      i2 = M->data[lvl - 1].U.col_ptr->data[j] - 1;
+      for (k = i1; k <= i2; k++) {
+        i3 = M->data[lvl - 1].U.row_ind->data[k - 1] - 1;
+        b_y1->data[i3] -= M->data[lvl - 1].U.val->data[k - 1] * b_y1->data[j - 1];
       }
     }
   }
@@ -244,19 +257,18 @@ static void solve_milu(const emxArray_struct1_T *M, int lvl, emxArray_real_T *b,
     crs_Axpy_kernel(M->data[lvl - 1].negE.row_ptr, M->data[lvl - 1].negE.col_ind,
                     M->data[lvl - 1].negE.val, b_y1, y2, M->data[lvl - 1].
                     negE.nrows);
-    b_n = n - M->data[lvl - 1].L.nrows;
-    for (i = 0; i + 1 <= b_n; i++) {
-      b->data[(offset + nB) + i] = y2->data[i];
+    i1 = n - M->data[lvl - 1].L.nrows;
+    for (b_n = 0; b_n < i1; b_n++) {
+      b->data[((offset + nB) + b_n) + 1] = y2->data[b_n];
     }
 
     solve_milu(M, lvl + 1, b, offset + M->data[lvl - 1].L.nrows, b_y1, y2);
-    for (i = 0; i + 1 <= nB; i++) {
-      b_y1->data[i] = b->data[offset + i];
+    for (b_n = 0; b_n <= nB; b_n++) {
+      b_y1->data[b_n] = b->data[offset + b_n];
     }
 
-    b_n = n - M->data[lvl - 1].L.nrows;
-    for (i = 0; i + 1 <= b_n; i++) {
-      y2->data[i] = b->data[(offset + nB) + i];
+    for (b_n = 0; b_n < i1; b_n++) {
+      y2->data[b_n] = b->data[((offset + nB) + b_n) + 1];
     }
 
     if (b_y1->size[0] < M->data[lvl - 1].negF.nrows) {
@@ -266,36 +278,40 @@ static void solve_milu(const emxArray_struct1_T *M, int lvl, emxArray_real_T *b,
     crs_Axpy_kernel(M->data[lvl - 1].negF.row_ptr, M->data[lvl - 1].negF.col_ind,
                     M->data[lvl - 1].negF.val, y2, b_y1, M->data[lvl - 1].
                     negF.nrows);
-    b_n = M->data[lvl - 1].L.col_ptr->size[0] - 1;
-    for (j = 1; j <= b_n; j++) {
-      for (k = M->data[lvl - 1].L.col_ptr->data[j - 1] - 1; k + 1 < M->data[lvl
-           - 1].L.col_ptr->data[j]; k++) {
-        b_y1->data[M->data[lvl - 1].L.row_ind->data[k] - 1] -= M->data[lvl - 1].
-          L.val->data[k] * b_y1->data[j - 1];
+    b_n = M->data[lvl - 1].L.col_ptr->size[0];
+    for (j = 0; j <= b_n - 2; j++) {
+      i1 = M->data[lvl - 1].L.col_ptr->data[j];
+      i2 = M->data[lvl - 1].L.col_ptr->data[j + 1] - 1;
+      for (k = i1; k <= i2; k++) {
+        i3 = M->data[lvl - 1].L.row_ind->data[k - 1] - 1;
+        b_y1->data[i3] -= M->data[lvl - 1].L.val->data[k - 1] * b_y1->data[j];
       }
     }
 
-    for (i = 0; i + 1 <= nB; i++) {
-      b_y1->data[i] /= M->data[lvl - 1].d->data[i];
+    for (b_n = 0; b_n <= nB; b_n++) {
+      b_y1->data[b_n] /= M->data[lvl - 1].d->data[b_n];
     }
 
-    for (j = M->data[lvl - 1].U.col_ptr->size[0] - 1; j > 0; j--) {
-      for (k = M->data[lvl - 1].U.col_ptr->data[j - 1] - 1; k + 1 < M->data[lvl
-           - 1].U.col_ptr->data[j]; k++) {
-        b_y1->data[M->data[lvl - 1].U.row_ind->data[k] - 1] -= M->data[lvl - 1].
-          U.val->data[k] * b_y1->data[j - 1];
+    b_n = M->data[lvl - 1].U.col_ptr->size[0] - 1;
+    for (j = b_n; j >= 1; j--) {
+      i1 = M->data[lvl - 1].U.col_ptr->data[j - 1];
+      i2 = M->data[lvl - 1].U.col_ptr->data[j] - 1;
+      for (k = i1; k <= i2; k++) {
+        i3 = M->data[lvl - 1].U.row_ind->data[k - 1] - 1;
+        b_y1->data[i3] -= M->data[lvl - 1].U.val->data[k - 1] * b_y1->data[j - 1];
       }
     }
   }
 
-  for (i = 0; i + 1 <= nB; i++) {
-    b->data[(M->data[lvl - 1].q->data[i] + offset) - 1] = b_y1->data[i] *
-      M->data[lvl - 1].colscal->data[M->data[lvl - 1].q->data[i] - 1];
+  for (b_n = 0; b_n <= nB; b_n++) {
+    b->data[(M->data[lvl - 1].q->data[b_n] + offset) - 1] = b_y1->data[b_n] *
+      M->data[lvl - 1].colscal->data[M->data[lvl - 1].q->data[b_n] - 1];
   }
 
-  for (i = M->data[lvl - 1].L.nrows; i + 1 <= n; i++) {
-    b->data[(M->data[lvl - 1].q->data[i] + offset) - 1] = y2->data[i - nB] *
-      M->data[lvl - 1].colscal->data[M->data[lvl - 1].q->data[i] - 1];
+  for (b_n = i; b_n <= n; b_n++) {
+    i1 = M->data[lvl - 1].q->data[b_n - 1];
+    b->data[(i1 + offset) - 1] = y2->data[(b_n - nB) - 2] * M->data[lvl - 1].
+      colscal->data[i1 - 1];
   }
 }
 
@@ -304,318 +320,264 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
   verbose, int nthreads, emxArray_real_T *x, int *flag, int *iter,
   emxArray_real_T *resids)
 {
-  double resid;
+  double rho_1;
+  int i;
   int ii;
   double bnrm2;
-  int loop_ub;
   emxArray_real_T *v;
   emxArray_real_T *p;
   emxArray_real_T *y2;
   emxArray_real_T *r;
+  double resid;
   emxArray_real_T *r_tld;
   double omega;
   double alpha;
-  double rho_1;
   emxArray_real_T *p_hat;
-  emxArray_real_T *a;
   int exitg1;
-  double rho;
+  double b_r_tld;
   *flag = 0;
   *iter = 0;
-  resid = 0.0;
-  for (ii = 0; ii + 1 <= b->size[0]; ii++) {
-    resid += b->data[ii] * b->data[ii];
+  rho_1 = 0.0;
+  i = b->size[0];
+  for (ii = 0; ii < i; ii++) {
+    rho_1 += b->data[ii] * b->data[ii];
   }
 
-  bnrm2 = sqrt(resid);
+  bnrm2 = sqrt(rho_1);
   if (bnrm2 == 0.0) {
-    ii = x->size[0];
+    i = x->size[0];
     x->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
-    loop_ub = b->size[0];
-    for (ii = 0; ii < loop_ub; ii++) {
-      x->data[ii] = 0.0;
+    emxEnsureCapacity_real_T(x, i);
+    ii = b->size[0];
+    for (i = 0; i < ii; i++) {
+      x->data[i] = 0.0;
     }
 
-    ii = resids->size[0];
+    i = resids->size[0];
     resids->size[0] = 1;
-    emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+    emxEnsureCapacity_real_T(resids, i);
     resids->data[0] = 0.0;
   } else {
     if (x0->size[0] == 0) {
-      ii = x->size[0];
+      i = x->size[0];
       x->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
-      loop_ub = b->size[0];
-      for (ii = 0; ii < loop_ub; ii++) {
-        x->data[ii] = 0.0;
+      emxEnsureCapacity_real_T(x, i);
+      ii = b->size[0];
+      for (i = 0; i < ii; i++) {
+        x->data[i] = 0.0;
       }
     } else {
-      ii = x->size[0];
+      i = x->size[0];
       x->size[0] = x0->size[0];
-      emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
-      loop_ub = x0->size[0];
-      for (ii = 0; ii < loop_ub; ii++) {
-        x->data[ii] = x0->data[ii];
+      emxEnsureCapacity_real_T(x, i);
+      ii = x0->size[0];
+      for (i = 0; i < ii; i++) {
+        x->data[i] = x0->data[i];
       }
     }
 
     emxInit_real_T(&v, 1);
-    ii = v->size[0];
+    i = v->size[0];
     v->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)v, ii, sizeof(double));
-    loop_ub = b->size[0];
-    for (ii = 0; ii < loop_ub; ii++) {
-      v->data[ii] = 0.0;
+    emxEnsureCapacity_real_T(v, i);
+    ii = b->size[0];
+    for (i = 0; i < ii; i++) {
+      v->data[i] = 0.0;
     }
 
     emxInit_real_T(&p, 1);
-    ii = p->size[0];
+    i = p->size[0];
     p->size[0] = b->size[0];
-    emxEnsureCapacity((emxArray__common *)p, ii, sizeof(double));
-    loop_ub = b->size[0];
-    for (ii = 0; ii < loop_ub; ii++) {
-      p->data[ii] = 0.0;
+    emxEnsureCapacity_real_T(p, i);
+    ii = b->size[0];
+    for (i = 0; i < ii; i++) {
+      p->data[i] = 0.0;
     }
 
     emxInit_real_T(&y2, 1);
-    ii = y2->size[0];
+    i = y2->size[0];
     y2->size[0] = M->data[0].negE.nrows;
-    emxEnsureCapacity((emxArray__common *)y2, ii, sizeof(double));
-    loop_ub = M->data[0].negE.nrows;
-    for (ii = 0; ii < loop_ub; ii++) {
-      y2->data[ii] = 0.0;
+    emxEnsureCapacity_real_T(y2, i);
+    ii = M->data[0].negE.nrows;
+    for (i = 0; i < ii; i++) {
+      y2->data[i] = 0.0;
     }
 
-    ii = resids->size[0];
+    i = resids->size[0];
     resids->size[0] = maxit;
-    emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
-    for (ii = 0; ii < maxit; ii++) {
-      resids->data[ii] = 0.0;
+    emxEnsureCapacity_real_T(resids, i);
+    for (i = 0; i < maxit; i++) {
+      resids->data[i] = 0.0;
     }
 
-    resid = 0.0;
-    for (ii = 0; ii + 1 <= x->size[0]; ii++) {
-      resid += x->data[ii] * x->data[ii];
+    rho_1 = 0.0;
+    i = x->size[0];
+    for (ii = 0; ii < i; ii++) {
+      rho_1 += x->data[ii] * x->data[ii];
     }
 
     emxInit_real_T(&r, 1);
-    if (resid > 0.0) {
-      ii = r->size[0];
+    if (rho_1 > 0.0) {
+      i = r->size[0];
       r->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
-      loop_ub = b->size[0];
-      for (ii = 0; ii < loop_ub; ii++) {
-        r->data[ii] = 0.0;
+      emxEnsureCapacity_real_T(r, i);
+      ii = b->size[0];
+      for (i = 0; i < ii; i++) {
+        r->data[i] = 0.0;
       }
 
       crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, x, r, nthreads);
-      ii = r->size[0];
+      i = r->size[0];
       r->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
-      loop_ub = b->size[0];
-      for (ii = 0; ii < loop_ub; ii++) {
-        r->data[ii] = b->data[ii] - r->data[ii];
+      emxEnsureCapacity_real_T(r, i);
+      ii = b->size[0];
+      for (i = 0; i < ii; i++) {
+        r->data[i] = b->data[i] - r->data[i];
       }
     } else {
-      ii = r->size[0];
+      i = r->size[0];
       r->size[0] = b->size[0];
-      emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
-      loop_ub = b->size[0];
-      for (ii = 0; ii < loop_ub; ii++) {
-        r->data[ii] = b->data[ii];
+      emxEnsureCapacity_real_T(r, i);
+      ii = b->size[0];
+      for (i = 0; i < ii; i++) {
+        r->data[i] = b->data[i];
       }
     }
 
-    resid = 0.0;
-    for (ii = 0; ii + 1 <= r->size[0]; ii++) {
-      resid += r->data[ii] * r->data[ii];
+    rho_1 = 0.0;
+    i = r->size[0];
+    for (ii = 0; ii < i; ii++) {
+      rho_1 += r->data[ii] * r->data[ii];
     }
 
-    resid = sqrt(resid) / bnrm2;
+    resid = sqrt(rho_1) / bnrm2;
     if (resid < rtol) {
-      ii = resids->size[0];
+      i = resids->size[0];
       resids->size[0] = 1;
-      emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+      emxEnsureCapacity_real_T(resids, i);
       resids->data[0] = 0.0;
     } else {
       emxInit_real_T(&r_tld, 1);
       omega = 1.0;
       alpha = 0.0;
       rho_1 = 0.0;
-      ii = r_tld->size[0];
+      i = r_tld->size[0];
       r_tld->size[0] = r->size[0];
-      emxEnsureCapacity((emxArray__common *)r_tld, ii, sizeof(double));
-      loop_ub = r->size[0];
-      for (ii = 0; ii < loop_ub; ii++) {
-        r_tld->data[ii] = r->data[ii];
+      emxEnsureCapacity_real_T(r_tld, i);
+      ii = r->size[0];
+      for (i = 0; i < ii; i++) {
+        r_tld->data[i] = r->data[i];
       }
 
       *iter = 1;
       emxInit_real_T(&p_hat, 1);
-      emxInit_real_T(&a, 2);
       do {
         exitg1 = 0;
-        ii = a->size[0] * a->size[1];
-        a->size[0] = 1;
-        a->size[1] = r_tld->size[0];
-        emxEnsureCapacity((emxArray__common *)a, ii, sizeof(double));
-        loop_ub = r_tld->size[0];
-        for (ii = 0; ii < loop_ub; ii++) {
-          a->data[a->size[0] * ii] = r_tld->data[ii];
+        b_r_tld = 0.0;
+        ii = r_tld->size[0];
+        for (i = 0; i < ii; i++) {
+          b_r_tld += r_tld->data[i] * r->data[i];
         }
 
-        if ((a->size[1] == 1) || (r->size[0] == 1)) {
-          rho = 0.0;
-          for (ii = 0; ii < a->size[1]; ii++) {
-            rho += a->data[a->size[0] * ii] * r->data[ii];
-          }
-        } else {
-          rho = 0.0;
-          for (ii = 0; ii < a->size[1]; ii++) {
-            rho += a->data[a->size[0] * ii] * r->data[ii];
-          }
-        }
-
-        if (rho == 0.0) {
+        if (b_r_tld == 0.0) {
           exitg1 = 1;
         } else {
           if (*iter > 1) {
-            resid = rho / rho_1 * (alpha / omega);
-            ii = p->size[0];
+            resid = b_r_tld / rho_1 * (alpha / omega);
+            i = p->size[0];
             p->size[0] = r->size[0];
-            emxEnsureCapacity((emxArray__common *)p, ii, sizeof(double));
-            loop_ub = r->size[0];
-            for (ii = 0; ii < loop_ub; ii++) {
-              p->data[ii] = r->data[ii] + resid * (p->data[ii] - omega * v->
-                data[ii]);
+            emxEnsureCapacity_real_T(p, i);
+            ii = r->size[0];
+            for (i = 0; i < ii; i++) {
+              p->data[i] = r->data[i] + resid * (p->data[i] - omega * v->data[i]);
             }
           } else {
-            ii = p->size[0];
+            i = p->size[0];
             p->size[0] = r->size[0];
-            emxEnsureCapacity((emxArray__common *)p, ii, sizeof(double));
-            loop_ub = r->size[0];
-            for (ii = 0; ii < loop_ub; ii++) {
-              p->data[ii] = r->data[ii];
+            emxEnsureCapacity_real_T(p, i);
+            ii = r->size[0];
+            for (i = 0; i < ii; i++) {
+              p->data[i] = r->data[i];
             }
           }
 
-          ii = p_hat->size[0];
+          i = p_hat->size[0];
           p_hat->size[0] = p->size[0];
-          emxEnsureCapacity((emxArray__common *)p_hat, ii, sizeof(double));
-          loop_ub = p->size[0];
-          for (ii = 0; ii < loop_ub; ii++) {
-            p_hat->data[ii] = p->data[ii];
+          emxEnsureCapacity_real_T(p_hat, i);
+          ii = p->size[0];
+          for (i = 0; i < ii; i++) {
+            p_hat->data[i] = p->data[i];
           }
 
-          MILUsolve(M, p_hat, v, y2);
+          solve_milu(M, 1, p_hat, 0, v, y2);
           crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, p_hat, v,
                      nthreads);
-          ii = a->size[0] * a->size[1];
-          a->size[0] = 1;
-          a->size[1] = r_tld->size[0];
-          emxEnsureCapacity((emxArray__common *)a, ii, sizeof(double));
-          loop_ub = r_tld->size[0];
-          for (ii = 0; ii < loop_ub; ii++) {
-            a->data[a->size[0] * ii] = r_tld->data[ii];
+          resid = 0.0;
+          ii = r_tld->size[0];
+          for (i = 0; i < ii; i++) {
+            resid += r_tld->data[i] * v->data[i];
           }
 
-          if ((a->size[1] == 1) || (v->size[0] == 1)) {
-            rho_1 = 0.0;
-            for (ii = 0; ii < a->size[1]; ii++) {
-              rho_1 += a->data[a->size[0] * ii] * v->data[ii];
-            }
-          } else {
-            rho_1 = 0.0;
-            for (ii = 0; ii < a->size[1]; ii++) {
-              rho_1 += a->data[a->size[0] * ii] * v->data[ii];
-            }
-          }
-
-          alpha = rho / rho_1;
+          alpha = b_r_tld / resid;
           ii = x->size[0];
-          emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
-          loop_ub = x->size[0];
-          for (ii = 0; ii < loop_ub; ii++) {
-            x->data[ii] += alpha * p_hat->data[ii];
+          for (i = 0; i < ii; i++) {
+            x->data[i] += alpha * p_hat->data[i];
           }
 
           ii = r->size[0];
-          emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
-          loop_ub = r->size[0];
-          for (ii = 0; ii < loop_ub; ii++) {
-            r->data[ii] -= alpha * v->data[ii];
+          for (i = 0; i < ii; i++) {
+            r->data[i] -= alpha * v->data[i];
           }
 
-          resid = 0.0;
-          for (ii = 0; ii + 1 <= r->size[0]; ii++) {
-            resid += r->data[ii] * r->data[ii];
+          rho_1 = 0.0;
+          i = r->size[0];
+          for (ii = 0; ii < i; ii++) {
+            rho_1 += r->data[ii] * r->data[ii];
           }
 
-          resid = sqrt(resid);
+          resid = sqrt(rho_1);
           if (resid < rtol) {
             resid /= bnrm2;
             resids->data[*iter - 1] = resid;
             exitg1 = 1;
           } else {
-            ii = p_hat->size[0];
+            i = p_hat->size[0];
             p_hat->size[0] = r->size[0];
-            emxEnsureCapacity((emxArray__common *)p_hat, ii, sizeof(double));
-            loop_ub = r->size[0];
-            for (ii = 0; ii < loop_ub; ii++) {
-              p_hat->data[ii] = r->data[ii];
+            emxEnsureCapacity_real_T(p_hat, i);
+            ii = r->size[0];
+            for (i = 0; i < ii; i++) {
+              p_hat->data[i] = r->data[i];
             }
 
-            MILUsolve(M, p_hat, v, y2);
+            solve_milu(M, 1, p_hat, 0, v, y2);
             crs_prodAx(A->row_ptr, A->col_ind, A->val, A->nrows, p_hat, v,
                        nthreads);
-            ii = a->size[0] * a->size[1];
-            a->size[0] = 1;
-            a->size[1] = v->size[0];
-            emxEnsureCapacity((emxArray__common *)a, ii, sizeof(double));
-            loop_ub = v->size[0];
-            for (ii = 0; ii < loop_ub; ii++) {
-              a->data[a->size[0] * ii] = v->data[ii];
-            }
-
-            if ((a->size[1] == 1) || (r->size[0] == 1)) {
-              rho_1 = 0.0;
-              for (ii = 0; ii < a->size[1]; ii++) {
-                rho_1 += a->data[a->size[0] * ii] * r->data[ii];
-              }
-            } else {
-              rho_1 = 0.0;
-              for (ii = 0; ii < a->size[1]; ii++) {
-                rho_1 += a->data[a->size[0] * ii] * r->data[ii];
-              }
-            }
-
+            rho_1 = 0.0;
+            i = v->size[0];
             resid = 0.0;
-            for (ii = 0; ii + 1 <= v->size[0]; ii++) {
-              resid += v->data[ii] * v->data[ii];
+            for (ii = 0; ii < i; ii++) {
+              rho_1 += v->data[ii] * v->data[ii];
+              resid += v->data[ii] * r->data[ii];
             }
 
-            omega = rho_1 / resid;
+            omega = resid / rho_1;
             ii = x->size[0];
-            emxEnsureCapacity((emxArray__common *)x, ii, sizeof(double));
-            loop_ub = x->size[0];
-            for (ii = 0; ii < loop_ub; ii++) {
-              x->data[ii] += omega * p_hat->data[ii];
+            for (i = 0; i < ii; i++) {
+              x->data[i] += omega * p_hat->data[i];
             }
 
             ii = r->size[0];
-            emxEnsureCapacity((emxArray__common *)r, ii, sizeof(double));
-            loop_ub = r->size[0];
-            for (ii = 0; ii < loop_ub; ii++) {
-              r->data[ii] -= omega * v->data[ii];
+            for (i = 0; i < ii; i++) {
+              r->data[i] -= omega * v->data[i];
             }
 
-            resid = 0.0;
-            for (ii = 0; ii + 1 <= r->size[0]; ii++) {
-              resid += r->data[ii] * r->data[ii];
+            rho_1 = 0.0;
+            i = r->size[0];
+            for (ii = 0; ii < i; ii++) {
+              rho_1 += r->data[ii] * r->data[ii];
             }
 
-            resid = sqrt(resid) / bnrm2;
+            resid = sqrt(rho_1) / bnrm2;
             resids->data[*iter - 1] = resid;
             if ((verbose > 1) || ((verbose > 0) && (*iter - div_nde_s32_floor
                   (*iter, 30) * 30 == 0))) {
@@ -630,7 +592,7 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
             } else if (omega == 0.0) {
               exitg1 = 1;
             } else {
-              rho_1 = rho;
+              rho_1 = b_r_tld;
               if (*iter >= maxit) {
                 exitg1 = 1;
               } else {
@@ -641,17 +603,16 @@ void bicgstabMILU_kernel(const struct0_T *A, const emxArray_real_T *b, const
         }
       } while (exitg1 == 0);
 
-      emxFree_real_T(&a);
       emxFree_real_T(&p_hat);
       emxFree_real_T(&r_tld);
-      ii = resids->size[0];
+      i = resids->size[0];
       resids->size[0] = *iter;
-      emxEnsureCapacity((emxArray__common *)resids, ii, sizeof(double));
+      emxEnsureCapacity_real_T(resids, i);
       if (resid <= rtol) {
         *flag = 0;
       } else if (omega == 0.0) {
         *flag = -2;
-      } else if (rho == 0.0) {
+      } else if (b_r_tld == 0.0) {
         *flag = -1;
       } else {
         if (*flag == 0) {

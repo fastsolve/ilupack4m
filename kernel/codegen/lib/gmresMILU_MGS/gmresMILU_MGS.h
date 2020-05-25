@@ -1,9 +1,7 @@
 #ifndef GMRESMILU_MGS_H
 #define GMRESMILU_MGS_H
-#include <math.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <string.h>
 #include "rtwtypes.h"
 #include "gmresMILU_MGS_types.h"
 

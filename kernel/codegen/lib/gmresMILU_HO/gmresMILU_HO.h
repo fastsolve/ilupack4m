@@ -1,9 +1,7 @@
 #ifndef GMRESMILU_HO_H
 #define GMRESMILU_HO_H
-#include <math.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <string.h>
 #include "rtwtypes.h"
 #include "gmresMILU_HO_types.h"
 

@@ -1,7 +1,6 @@
 #ifndef BICGSTABMILU_KERNEL_TYPES_H
 #define BICGSTABMILU_KERNEL_TYPES_H
 #include "rtwtypes.h"
-
 #ifndef struct_emxArray_int32_T
 #define struct_emxArray_int32_T
 
@@ -87,24 +86,16 @@ typedef struct {
 
 #endif
 
-#ifndef struct_emxArray_struct1_T
-#define struct_emxArray_struct1_T
+#ifndef typedef_emxArray_struct1_T
+#define typedef_emxArray_struct1_T
 
-struct emxArray_struct1_T
-{
+typedef struct {
   struct1_T *data;
   int *size;
   int allocatedSize;
   int numDimensions;
   boolean_T canFreeData;
-};
-
-#endif
-
-#ifndef typedef_emxArray_struct1_T
-#define typedef_emxArray_struct1_T
-
-typedef struct emxArray_struct1_T emxArray_struct1_T;
+} emxArray_struct1_T;
 
 #endif
 #endif

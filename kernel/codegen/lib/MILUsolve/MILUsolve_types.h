@@ -1,7 +1,6 @@
 #ifndef MILUSOLVE_TYPES_H
 #define MILUSOLVE_TYPES_H
 #include "rtwtypes.h"
-
 #ifndef struct_emxArray_int32_T
 #define struct_emxArray_int32_T
 
@@ -87,24 +86,16 @@ typedef struct {
 
 #endif
 
-#ifndef struct_emxArray_struct0_T
-#define struct_emxArray_struct0_T
+#ifndef typedef_emxArray_struct0_T
+#define typedef_emxArray_struct0_T
 
-struct emxArray_struct0_T
-{
+typedef struct {
   struct0_T *data;
   int *size;
   int allocatedSize;
   int numDimensions;
   boolean_T canFreeData;
-};
-
-#endif
-
-#ifndef typedef_emxArray_struct0_T
-#define typedef_emxArray_struct0_T
-
-typedef struct emxArray_struct0_T emxArray_struct0_T;
+} emxArray_struct0_T;
 
 #endif
 #endif
